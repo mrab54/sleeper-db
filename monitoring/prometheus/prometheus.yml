@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'sleeper-db'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Sync Service metrics
+  - job_name: 'sync-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['sync-service:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'sync-service'
+
+  # PostgreSQL exporter (if added)
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'postgresql'
+
+  # Redis exporter (if added)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'redis'
+
+  # Hasura metrics (if exposed)
+  - job_name: 'hasura'
+    metrics_path: '/v1/metrics'
+    static_configs:
+      - targets: ['hasura:8080']
+    params:
+      format: ['prometheus']
+    headers:
+      X-Hasura-Admin-Secret: ['${HASURA_ADMIN_SECRET}']

@@ -1,0 +1,230 @@
+version: '3.8'
+
+networks:
+  sleeper-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: sleeper-postgres
+    restart: unless-stopped
+    networks:
+      - sleeper-net
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sleeper_db}
+      POSTGRES_USER: ${POSTGRES_USER:-sleeper_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./database/schema:/schema:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sleeper_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: sleeper-redis
+    restart: unless-stopped
+    networks:
+      - sleeper-net
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Hasura GraphQL Engine
+  hasura:
+    image: hasura/graphql-engine:v2.36.0
+    container_name: sleeper-hasura
+    restart: unless-stopped
+    networks:
+      - sleeper-net
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER:-sleeper_user}:${POSTGRES_PASSWORD:-sleeper_password}@postgres:5432/${POSTGRES_DB:-sleeper_db}
+      HASURA_GRAPHQL_ENABLE_CONSOLE: ${HASURA_ENABLE_CONSOLE:-true}
+      HASURA_GRAPHQL_DEV_MODE: ${HASURA_DEV_MODE:-true}
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-myadminsecret}
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
+      HASURA_GRAPHQL_ENABLE_TELEMETRY: "false"
+      HASURA_GRAPHQL_ENABLE_QUERY_CACHING: "true"
+      HASURA_GRAPHQL_REDIS_URL: redis://redis:6379
+      HASURA_GRAPHQL_RATE_LIMIT_REDIS_URL: redis://redis:6379
+      HASURA_GRAPHQL_EVENTS_FETCH_BATCH_SIZE: 100
+    volumes:
+      - ./hasura/metadata:/hasura-metadata:ro
+      - ./hasura/migrations:/hasura-migrations:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Go Sync Service
+  sync-service:
+    build:
+      context: ./sync-service
+      dockerfile: Dockerfile
+      target: production
+    image: sleeper-sync:latest
+    container_name: sleeper-sync
+    restart: unless-stopped
+    networks:
+      - sleeper-net
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Server
+      SERVER_PORT: 8000
+      SERVER_HOST: 0.0.0.0
+      SERVER_ENVIRONMENT: ${ENVIRONMENT:-production}
+      SERVER_LOG_LEVEL: ${LOG_LEVEL:-info}
+      
+      # Database
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${POSTGRES_USER:-sleeper_user}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
+      DATABASE_NAME: ${POSTGRES_DB:-sleeper_db}
+      DATABASE_SSL_MODE: disable
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # Sleeper API
+      SLEEPER_BASE_URL: ${SLEEPER_API_BASE_URL:-https://api.sleeper.app/v1}
+      SLEEPER_PRIMARY_LEAGUE_ID: ${PRIMARY_LEAGUE_ID:-1199102384316362752}
+      
+      # Hasura
+      HASURA_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-myadminsecret}
+      HASURA_ENDPOINT: http://hasura:8080
+      
+      # Go specific
+      GOMAXPROCS: 4
+    healthcheck:
+      test: ["CMD", "/sleeper-sync", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 128M
+
+  # Prometheus Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sleeper-prometheus
+    restart: unless-stopped
+    networks:
+      - sleeper-net
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    depends_on:
+      - sync-service
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sleeper-grafana
+    restart: unless-stopped
+    networks:
+      - sleeper-net
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: redis-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M

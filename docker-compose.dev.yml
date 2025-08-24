@@ -1,0 +1,46 @@
+version: '3.8'
+
+# Development overrides for docker-compose.yml
+services:
+  postgres:
+    ports:
+      - "5432:5432"  # Expose for local development tools
+
+  redis:
+    ports:
+      - "6379:6379"  # Expose for local development
+
+  hasura:
+    environment:
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_LOG_LEVEL: "debug"
+    ports:
+      - "8080:8080"  # Direct access to Hasura console
+
+  sync-service:
+    build:
+      target: development  # Use development stage with hot reload
+    volumes:
+      - ./sync-service:/app  # Mount source code for hot reload
+      - /app/tmp  # Exclude tmp directory
+    environment:
+      SERVER_ENVIRONMENT: development
+      SERVER_LOG_LEVEL: debug
+      # Enable pprof for profiling in development
+      ENABLE_PPROF: "true"
+    ports:
+      - "8000:8000"  # Direct access
+      - "6060:6060"  # pprof debug port
+    command: ["air", "-c", ".air.toml"]  # Use air for hot reload
+
+  prometheus:
+    ports:
+      - "9090:9090"  # Direct access to Prometheus
+
+  grafana:
+    ports:
+      - "3000:3000"  # Direct access to Grafana
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"  # Easy access in dev

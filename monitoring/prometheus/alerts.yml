@@ -1,0 +1,130 @@
+groups:
+  - name: sync_service
+    interval: 30s
+    rules:
+      # Sync Service Down
+      - alert: SyncServiceDown
+        expr: up{job="sync-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: sync-service
+        annotations:
+          summary: "Sync service is down"
+          description: "Sync service {{ $labels.instance }} has been down for more than 1 minute."
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: rate(sync_errors_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: sync-service
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second (threshold: 0.05)"
+
+      # Sync Lag
+      - alert: SyncLag
+        expr: time() - sync_last_success_timestamp > 1800
+        for: 5m
+        labels:
+          severity: warning
+          service: sync-service
+        annotations:
+          summary: "Sync lag detected"
+          description: "Last successful sync was {{ $value }} seconds ago (threshold: 30 minutes)"
+
+      # API Response Time
+      - alert: SlowAPIResponse
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: sync-service
+        annotations:
+          summary: "Slow API response times"
+          description: "95th percentile response time is {{ $value }}s (threshold: 1s)"
+
+      # Database Connection Pool
+      - alert: DatabaseConnectionPoolExhausted
+        expr: database_connections_in_use / database_connections_max > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "{{ $value | humanizePercentage }} of database connections are in use"
+
+      # Memory Usage
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 400
+        for: 5m
+        labels:
+          severity: warning
+          service: sync-service
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}MB (threshold: 400MB)"
+
+  - name: infrastructure
+    interval: 30s
+    rules:
+      # PostgreSQL Down
+      - alert: PostgreSQLDown
+        expr: up{job="postgresql"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 1 minute."
+
+      # Redis Down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 1 minute."
+
+      # Disk Space
+      - alert: LowDiskSpace
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "Low disk space"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining"
+
+  - name: business_metrics
+    interval: 1m
+    rules:
+      # No Recent Sync
+      - alert: NoRecentSync
+        expr: time() - sync_last_success_timestamp{entity="league"} > 7200
+        for: 5m
+        labels:
+          severity: warning
+          service: sync-service
+        annotations:
+          summary: "No recent league sync"
+          description: "League {{ $labels.league_id }} hasn't been synced in {{ $value }} seconds"
+
+      # Failed Sync Attempts
+      - alert: ConsecutiveFailedSyncs
+        expr: increase(sync_failures_total[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          service: sync-service
+        annotations:
+          summary: "Multiple failed sync attempts"
+          description: "{{ $value }} failed sync attempts in the last hour"
