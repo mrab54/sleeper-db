@@ -178,15 +178,41 @@ func setDefaults() {
 
 // validate checks if the configuration is valid
 func validate(cfg *Config) error {
+	// Database validation
 	if cfg.Database.User == "" {
 		return fmt.Errorf("database user is required")
 	}
 	if cfg.Database.Database == "" {
 		return fmt.Errorf("database name is required")
 	}
+	if cfg.Database.Host == "" {
+		return fmt.Errorf("database host is required")
+	}
+	if cfg.Database.Port <= 0 || cfg.Database.Port > 65535 {
+		return fmt.Errorf("invalid database port: %d", cfg.Database.Port)
+	}
+	
+	// Sleeper API validation
 	if cfg.Sleeper.PrimaryLeagueID == "" {
 		return fmt.Errorf("primary league ID is required")
 	}
+	if cfg.Sleeper.BaseURL == "" {
+		return fmt.Errorf("Sleeper API base URL is required")
+	}
+	
+	// Redis validation
+	if cfg.Redis.Host == "" {
+		return fmt.Errorf("Redis host is required")
+	}
+	if cfg.Redis.Port <= 0 || cfg.Redis.Port > 65535 {
+		return fmt.Errorf("invalid Redis port: %d", cfg.Redis.Port)
+	}
+	
+	// Server validation
+	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
+		return fmt.Errorf("invalid server port: %d", cfg.Server.Port)
+	}
+	
 	return nil
 }
 

@@ -182,7 +182,16 @@ setup: ## Initial project setup
 	@cp -n .env.example .env 2>/dev/null || echo ".env already exists"
 	@make go-deps
 	@make dev-build
+	@echo "Installing pre-commit hooks..."
+	@pip install pre-commit 2>/dev/null || true
+	@pre-commit install 2>/dev/null || true
 	@echo "Setup complete! Run 'make dev' to start development environment"
+
+.PHONY: validate
+validate: ## Validate all configuration files
+	@echo "Validating configurations..."
+	@docker-compose config > /dev/null && echo "✓ Docker Compose valid"
+	@cd sync-service && go mod verify && echo "✓ Go modules valid"
 
 # Git
 .PHONY: commit
