@@ -1,0 +1,25 @@
+Create a CLAUDE.md file for this project. The goal of the project is to provide a database for Fantasy football
+ league data from the Sleeper fantasy football website. Sleeper provides a free API which you can find
+ documentation here: https://docs.sleeper.com/
+
+ We need to have some sort of scheduled jobs to fetch all of the data from every endpoint that is provided by the
+ Sleeper API but we should store it in a normalized way. From what I can tell from the docs of the API, the
+ endpoints are not all strictly REST and the data is not exactly normalized. Study the docs in depth that think
+ ultra fucking hard about how to create a database and tables in order to store the data coming from the API in a
+ normalized way. We should use Postgresql as a database and use Hasura as a graphql provider to that database. I
+ think we can probably make use of some functionality in Hasura to create scheduled jobs that will fetch/upsert
+ the sleeper data from the API. Also, I would like for this all to be run in docker containers for ease of
+ deployment. Ultimately, the goal is to have an up to date, normalized database of my sleeper fantasy football
+ leagues data in a postgresql database and have a hasura instance / graphql interface to that data. My league ID
+ is 1199102384316362752, you can use that ID as the one to populate data for.
+
+
+ ==============================================
+ Next prompt:
+
+ Ok, now you gotta think very deeply and very hard - design the architecture of the app, create a PLAN.md and
+  break everything down into small actionable tasks. Make sure each part of the design is accounted for in the
+  plan. All tasks should be detailed and if they need further investigation in order to make a good design
+  decision, then create a reasearch task. Leave no stone unturned when creating the plan, think through all aspects
+   of the design, ensure we have solid tests, ensure the deployment and development experience is solid and
+  efficient and most importantly - works seemlessly.
