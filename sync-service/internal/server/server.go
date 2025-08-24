@@ -24,6 +24,7 @@ type Server struct {
 	app       *fiber.App
 	config    *config.Config
 	db        *database.DB
+	apiClient *api.SleeperClient
 	syncer    *sync.Syncer
 	scheduler *scheduler.Scheduler
 	logger    *zap.Logger
@@ -85,6 +86,7 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 		app:       app,
 		config:    cfg,
 		db:        db,
+		apiClient: apiClient,
 		syncer:    syncer,
 		scheduler: sched,
 		logger:    logger,

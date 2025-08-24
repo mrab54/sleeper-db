@@ -51,16 +51,22 @@ func (r *LeagueRepository) UpsertLeague(ctx context.Context, league *api.League)
 		return fmt.Errorf("failed to marshal roster positions: %w", err)
 	}
 
-	// Convert season string to int
-	var season int
-	if _, err := fmt.Sscanf(league.Season, "%d", &season); err != nil {
-		return fmt.Errorf("failed to parse season: %w", err)
+	// Handle empty previous_league_id
+	var previousLeagueID interface{} = nil
+	if league.PreviousLeagueID != "" {
+		previousLeagueID = league.PreviousLeagueID
+	}
+
+	// Handle empty draft_id
+	var draftID interface{} = nil
+	if league.DraftID != "" {
+		draftID = league.DraftID
 	}
 
 	_, err = r.db.Exec(ctx, query,
 		league.LeagueID,
 		league.Name,
-		season,
+		league.Season,  // Keep as string - matches table schema
 		league.Status,
 		league.Sport,
 		league.TotalRosters,
@@ -68,8 +74,8 @@ func (r *LeagueRepository) UpsertLeague(ctx context.Context, league *api.League)
 		league.ScoringSettings,
 		rosterPositions,
 		league.Metadata,
-		league.PreviousLeagueID,
-		league.DraftID,
+		previousLeagueID,
+		draftID,
 	)
 
 	if err != nil {
