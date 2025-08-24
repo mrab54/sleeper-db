@@ -6,12 +6,22 @@
 -- It provides a normalized structure for efficient querying and data integrity
 
 -- ============================================================================
+-- SCHEMA SETUP
+-- ============================================================================
+
+-- Create dedicated schema for Sleeper data
+CREATE SCHEMA IF NOT EXISTS sleeper;
+
+-- Set the search path to use sleeper schema by default
+SET search_path TO sleeper, public;
+
+-- ============================================================================
 -- EXTENSIONS
 -- ============================================================================
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm"; -- For text search optimization
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS "pg_trgm" SCHEMA public; -- For text search optimization
 
 -- ============================================================================
 -- ENUMS
@@ -486,7 +496,7 @@ CREATE INDEX idx_playoff_brackets_type ON playoff_brackets(bracket_type);
 
 -- Sync log - Track all sync operations
 CREATE TABLE sync_log (
-    id SERIAL PRIMARY KEY,
+    id SERIAL,
     entity_type sync_entity_type NOT NULL,
     entity_id VARCHAR(255) NOT NULL,
     action sync_action NOT NULL,
@@ -495,15 +505,16 @@ CREATE TABLE sync_log (
     duration_ms INTEGER,
     error_message TEXT,
     details JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (id, created_at)
+) PARTITION BY RANGE (created_at);
 
 CREATE INDEX idx_sync_log_entity ON sync_log(entity_type, entity_id);
 CREATE INDEX idx_sync_log_created ON sync_log(created_at DESC);
 CREATE INDEX idx_sync_log_status ON sync_log(status);
 CREATE INDEX idx_sync_log_entity_created ON sync_log(entity_type, created_at DESC);
 
--- Partition sync_log by month for performance
+-- Create initial partition for current month
 CREATE TABLE sync_log_y2025m01 PARTITION OF sync_log
     FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
 
@@ -689,7 +700,7 @@ CREATE OR REPLACE FUNCTION get_roster_players_for_week(
 ) RETURNS TABLE(
     player_id VARCHAR,
     full_name VARCHAR,
-    position VARCHAR,
+    player_position VARCHAR,
     is_starter BOOLEAN,
     slot_position VARCHAR,
     points DECIMAL
@@ -699,7 +710,7 @@ BEGIN
     SELECT 
         rp.player_id,
         p.full_name,
-        p.position,
+        p.position AS player_position,
         rp.is_starter,
         rp.slot_position,
         COALESCE(mp.points, 0) as points

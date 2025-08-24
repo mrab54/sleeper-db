@@ -56,5 +56,3 @@ scrape_configs:
       - targets: ['hasura:8080']
     params:
       format: ['prometheus']
-    headers:
-      X-Hasura-Admin-Secret: ['${HASURA_ADMIN_SECRET}']

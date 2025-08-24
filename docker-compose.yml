@@ -89,7 +89,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER:-sleeper_user}:${POSTGRES_PASSWORD:-sleeper_password}@postgres:5432/${POSTGRES_DB:-sleeper_db}
+      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER:-sleeper_user}:${POSTGRES_PASSWORD:-sleeper_password}@postgres:5432/${POSTGRES_DB:-sleeper_db}?options=-csearch_path%3Dsleeper
       HASURA_GRAPHQL_ENABLE_CONSOLE: ${HASURA_ENABLE_CONSOLE:-true}
       HASURA_GRAPHQL_DEV_MODE: ${HASURA_DEV_MODE:-true}
       HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-myadminsecret}
@@ -99,6 +99,7 @@ services:
       HASURA_GRAPHQL_REDIS_URL: redis://redis:6379
       HASURA_GRAPHQL_RATE_LIMIT_REDIS_URL: redis://redis:6379
       HASURA_GRAPHQL_EVENTS_FETCH_BATCH_SIZE: 100
+      HASURA_GRAPHQL_METADATA_DIR: /hasura-metadata
     volumes:
       - ./hasura/metadata:/hasura-metadata:ro
       - ./hasura/migrations:/hasura-migrations:ro

@@ -1,5 +1,5 @@
 # Multi-stage build for minimal production image
-FROM golang:1.21-alpine AS builder
+FROM golang:1.22-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git make ca-certificates tzdata
@@ -18,7 +18,7 @@ COPY . .
 
 # Build the binary with optimizations
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s -X main.version=$(git describe --tags --always --dirty) -X main.commit=$(git rev-parse HEAD) -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    -ldflags="-w -s -X main.version=v0.1.0 -X main.commit=unknown -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     -tags netgo \
     -o sleeper-sync \
     ./cmd/sync
@@ -27,7 +27,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # RUN apk add --no-cache upx && upx --best --lzma sleeper-sync
 
 # Development stage - includes debugging tools
-FROM golang:1.21-alpine AS development
+FROM golang:1.22-alpine AS development
 
 RUN apk add --no-cache git make ca-certificates tzdata curl
 

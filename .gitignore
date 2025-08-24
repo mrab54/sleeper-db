@@ -138,4 +138,4 @@ site/
 secrets/
 *.secret
 credentials.json
-service-account.json
+service-account.jsonScreenshot*.png

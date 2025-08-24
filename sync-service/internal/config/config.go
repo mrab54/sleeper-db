@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -88,13 +87,30 @@ func Load() (*Config, error) {
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./config")
 
-	// Environment variable overrides
-	viper.SetEnvPrefix("SLEEPER")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-
-	// Set defaults
+	// Set defaults first
 	setDefaults()
+
+	// Manual environment variable bindings to match docker-compose.yml
+	viper.BindEnv("server.port", "SERVER_PORT")
+	viper.BindEnv("server.host", "SERVER_HOST")
+	viper.BindEnv("server.environment", "SERVER_ENVIRONMENT")
+	viper.BindEnv("server.log_level", "SERVER_LOG_LEVEL")
+	
+	viper.BindEnv("database.host", "DATABASE_HOST")
+	viper.BindEnv("database.port", "DATABASE_PORT")
+	viper.BindEnv("database.user", "DATABASE_USER")
+	viper.BindEnv("database.password", "DATABASE_PASSWORD")
+	viper.BindEnv("database.database", "DATABASE_NAME")
+	viper.BindEnv("database.ssl_mode", "DATABASE_SSL_MODE")
+	
+	viper.BindEnv("redis.host", "REDIS_HOST")
+	viper.BindEnv("redis.port", "REDIS_PORT")
+	
+	viper.BindEnv("sleeper.base_url", "SLEEPER_BASE_URL")
+	viper.BindEnv("sleeper.primary_league_id", "SLEEPER_PRIMARY_LEAGUE_ID")
+	
+	viper.BindEnv("hasura.admin_secret", "HASURA_ADMIN_SECRET")
+	viper.BindEnv("hasura.endpoint", "HASURA_ENDPOINT")
 
 	// Read config file (optional)
 	if err := viper.ReadInConfig(); err != nil {
@@ -176,7 +192,7 @@ func validate(cfg *Config) error {
 
 // GetDSN returns the PostgreSQL connection string
 func (c *DatabaseConfig) GetDSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s&search_path=sleeper",
 		c.User, c.Password, c.Host, c.Port, c.Database, c.SSLMode)
 }
 
