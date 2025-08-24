@@ -1,74 +1,39 @@
 package logger
 
 import (
-	"os"
-	"time"
-
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-// Init initializes the global logger with the specified environment and level
-func Init(environment, level string) {
-	// Set time format
-	zerolog.TimeFieldFormat = time.RFC3339Nano
-
-	// Configure based on environment
-	if environment == "development" {
-		// Pretty console logging for development
-		log.Logger = log.Output(zerolog.ConsoleWriter{
-			Out:        os.Stdout,
-			TimeFormat: "15:04:05.000",
-			NoColor:    false,
-		})
-	} else {
-		// JSON logging for production
-		log.Logger = log.Output(os.Stdout)
-	}
-
+// New creates a new zap logger
+func New(level string) *zap.Logger {
+	config := zap.NewProductionConfig()
+	
 	// Set log level
-	logLevel := parseLevel(level)
-	zerolog.SetGlobalLevel(logLevel)
-
-	// Add global context
-	log.Logger = log.With().
-		Str("service", "sleeper-sync").
-		Str("environment", environment).
-		Logger()
-}
-
-// parseLevel converts string log level to zerolog level
-func parseLevel(level string) zerolog.Level {
 	switch level {
-	case "trace":
-		return zerolog.TraceLevel
 	case "debug":
-		return zerolog.DebugLevel
+		config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
 	case "info":
-		return zerolog.InfoLevel
-	case "warn", "warning":
-		return zerolog.WarnLevel
+		config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	case "warn":
+		config.Level = zap.NewAtomicLevelAt(zapcore.WarnLevel)
 	case "error":
-		return zerolog.ErrorLevel
-	case "fatal":
-		return zerolog.FatalLevel
-	case "panic":
-		return zerolog.PanicLevel
+		config.Level = zap.NewAtomicLevelAt(zapcore.ErrorLevel)
 	default:
-		return zerolog.InfoLevel
+		config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	}
-}
 
-// WithContext returns a logger with additional context fields
-func WithContext(fields map[string]interface{}) zerolog.Logger {
-	logger := log.Logger
-	for key, value := range fields {
-		logger = logger.With().Interface(key, value).Logger()
+	// Configure encoder
+	config.EncoderConfig.TimeKey = "timestamp"
+	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	config.EncoderConfig.StacktraceKey = "stacktrace"
+	config.EncoderConfig.MessageKey = "message"
+	config.EncoderConfig.LevelKey = "level"
+	
+	logger, err := config.Build()
+	if err != nil {
+		panic(err)
 	}
+	
 	return logger
-}
-
-// WithRequestID returns a logger with request ID
-func WithRequestID(requestID string) zerolog.Logger {
-	return log.With().Str("request_id", requestID).Logger()
 }

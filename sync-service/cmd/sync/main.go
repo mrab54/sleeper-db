@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mrab54/sleeper-db/internal/config"
-	"github.com/mrab54/sleeper-db/internal/server"
-	"github.com/mrab54/sleeper-db/pkg/logger"
-	"github.com/rs/zerolog/log"
+	"github.com/mrab54/sleeper-db/sync-service/internal/config"
+	"github.com/mrab54/sleeper-db/sync-service/internal/server"
+	"github.com/mrab54/sleeper-db/sync-service/pkg/logger"
+	"go.uber.org/zap"
 )
 
 var (
@@ -39,14 +39,15 @@ func main() {
 	}
 
 	// Initialize logger
-	logger.Init(cfg.Server.Environment, cfg.Server.LogLevel)
+	log := logger.New(cfg.Server.LogLevel)
+	defer log.Sync()
 	
-	log.Info().
-		Str("version", version).
-		Str("commit", commit).
-		Str("built", date).
-		Str("environment", cfg.Server.Environment).
-		Msg("Starting Sleeper Sync Service")
+	log.Info("Starting Sleeper Sync Service",
+		zap.String("version", version),
+		zap.String("commit", commit),
+		zap.String("built", date),
+		zap.String("environment", cfg.Server.Environment),
+	)
 
 	// Create context that listens for the interrupt signal
 	ctx, cancel := context.WithCancel(context.Background())
@@ -58,14 +59,14 @@ func main() {
 	
 	go func() {
 		<-sigChan
-		log.Info().Msg("Shutdown signal received")
+		log.Info("Shutdown signal received")
 		cancel()
 	}()
 
 	// Initialize and start server
-	srv, err := server.New(cfg)
+	srv, err := server.New(cfg, log)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create server")
+		log.Fatal("Failed to create server", zap.Error(err))
 	}
 
 	// Start server in goroutine
@@ -79,9 +80,9 @@ func main() {
 	// Wait for context cancellation or server error
 	select {
 	case <-ctx.Done():
-		log.Info().Msg("Context cancelled, shutting down...")
+		log.Info("Context cancelled, shutting down...")
 	case err := <-serverErr:
-		log.Error().Err(err).Msg("Server error")
+		log.Error("Server error", zap.Error(err))
 		cancel()
 	}
 
@@ -90,8 +91,8 @@ func main() {
 	defer shutdownCancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Error().Err(err).Msg("Error during shutdown")
+		log.Error("Error during shutdown", zap.Error(err))
 	}
 
-	log.Info().Msg("Service stopped")
+	log.Info("Service stopped")
 }

@@ -8,26 +8,57 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/logger"
+	fiberlogger "github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"github.com/mrab54/sleeper-db/internal/config"
-	"github.com/rs/zerolog/log"
+	"github.com/mrab54/sleeper-db/sync-service/internal/api"
+	"github.com/mrab54/sleeper-db/sync-service/internal/config"
+	"github.com/mrab54/sleeper-db/sync-service/internal/database"
+	"github.com/mrab54/sleeper-db/sync-service/internal/scheduler"
+	"github.com/mrab54/sleeper-db/sync-service/internal/sync"
+	"go.uber.org/zap"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	app    *fiber.App
-	config *config.Config
-	// TODO: Add these when implemented
-	// api      *api.Client
-	// db       *database.DB
-	// syncer   *sync.Syncer
-	// scheduler *scheduler.Scheduler
+	app       *fiber.App
+	config    *config.Config
+	db        *database.DB
+	syncer    *sync.Syncer
+	scheduler *scheduler.Scheduler
+	logger    *zap.Logger
 }
 
 // New creates a new server instance
-func New(cfg *config.Config) (*Server, error) {
+func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
+	// Initialize database
+	dbConfig := &database.Config{
+		Host:            cfg.Database.Host,
+		Port:            cfg.Database.Port,
+		User:            cfg.Database.User,
+		Password:        cfg.Database.Password,
+		Database:        cfg.Database.Database,
+		SSLMode:         cfg.Database.SSLMode,
+		MaxConns:        int32(cfg.Database.MaxConnections),
+		MinConns:        int32(cfg.Database.MinConnections),
+		MaxConnLifetime: time.Duration(cfg.Database.MaxConnLifetime) * time.Second,
+		MaxConnIdleTime: time.Duration(cfg.Database.MaxConnIdleTime) * time.Second,
+	}
+
+	db, err := database.NewDB(context.Background(), dbConfig, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	// Initialize Sleeper API client
+	apiClient := api.NewSleeperClient(cfg.Sleeper.BaseURL, logger)
+
+	// Initialize syncer
+	syncer := sync.NewSyncer(apiClient, db, logger)
+
+	// Initialize scheduler
+	sched := scheduler.NewScheduler(syncer, logger)
+
 	// Create Fiber app with configuration
 	app := fiber.New(fiber.Config{
 		AppName:               "Sleeper Sync Service",
@@ -42,31 +73,32 @@ func New(cfg *config.Config) (*Server, error) {
 		WriteTimeout:          cfg.Server.WriteTimeout,
 		IdleTimeout:           cfg.Server.IdleTimeout,
 		Concurrency:           256 * 1024,
-		ErrorHandler:          customErrorHandler,
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			return customErrorHandler(c, err, logger)
+		},
 	})
 
 	// Setup middleware
-	setupMiddleware(app, cfg)
+	setupMiddleware(app, cfg, logger)
 
 	s := &Server{
-		app:    app,
-		config: cfg,
+		app:       app,
+		config:    cfg,
+		db:        db,
+		syncer:    syncer,
+		scheduler: sched,
+		logger:    logger,
 	}
 
 	// Setup routes
 	s.setupRoutes()
 
-	// TODO: Initialize dependencies
-	// s.api = api.NewClient(cfg.Sleeper)
-	// s.db = database.New(cfg.Database)
-	// s.syncer = sync.New(s.api, s.db)
-	// s.scheduler = scheduler.New(s.syncer, cfg)
 
 	return s, nil
 }
 
 // setupMiddleware configures all middleware
-func setupMiddleware(app *fiber.App, cfg *config.Config) {
+func setupMiddleware(app *fiber.App, cfg *config.Config, logger *zap.Logger) {
 	// Recover from panics
 	app.Use(recover.New(recover.Config{
 		EnableStackTrace: cfg.Server.Environment == "development",
@@ -77,12 +109,12 @@ func setupMiddleware(app *fiber.App, cfg *config.Config) {
 
 	// Logging
 	if cfg.Server.Environment == "development" {
-		app.Use(logger.New(logger.Config{
+		app.Use(fiberlogger.New(fiberlogger.Config{
 			Format:     "[${time}] ${status} - ${latency} ${method} ${path} ${error}\n",
 			TimeFormat: "15:04:05.000",
 		}))
 	} else {
-		// Production uses structured logging via zerolog
+		// Production uses structured logging via zap
 		app.Use(func(c *fiber.Ctx) error {
 			start := time.Now()
 			
@@ -90,14 +122,14 @@ func setupMiddleware(app *fiber.App, cfg *config.Config) {
 			err := c.Next()
 			
 			// Log request
-			log.Info().
-				Str("request_id", c.Locals("requestid").(string)).
-				Str("method", c.Method()).
-				Str("path", c.Path()).
-				Int("status", c.Response().StatusCode()).
-				Dur("latency", time.Since(start)).
-				Str("ip", c.IP()).
-				Msg("HTTP Request")
+			logger.Info("HTTP Request",
+				zap.String("request_id", c.Locals("requestid").(string)),
+				zap.String("method", c.Method()),
+				zap.String("path", c.Path()),
+				zap.Int("status", c.Response().StatusCode()),
+				zap.Duration("latency", time.Since(start)),
+				zap.String("ip", c.IP()),
+			)
 			
 			return err
 		})
@@ -153,13 +185,18 @@ func (s *Server) setupRoutes() {
 func (s *Server) Start(ctx context.Context) error {
 	addr := fmt.Sprintf("%s:%d", s.config.Server.Host, s.config.Server.Port)
 	
-	log.Info().
-		Str("address", addr).
-		Str("environment", s.config.Server.Environment).
-		Msg("Starting HTTP server")
+	s.logger.Info("Starting HTTP server",
+		zap.String("address", addr),
+		zap.String("environment", s.config.Server.Environment),
+	)
 
 	// Start scheduler
-	// TODO: s.scheduler.Start(ctx)
+	if err := s.scheduler.Start(); err != nil {
+		return fmt.Errorf("failed to start scheduler: %w", err)
+	}
+
+	// Schedule initial jobs
+	s.scheduleJobs()
 
 	// Start server
 	errChan := make(chan error, 1)
@@ -179,20 +216,63 @@ func (s *Server) Start(ctx context.Context) error {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown(ctx context.Context) error {
-	log.Info().Msg("Shutting down server...")
+	s.logger.Info("Shutting down server...")
 
-	// TODO: Stop scheduler
-	// s.scheduler.Stop()
+	// Stop scheduler
+	s.scheduler.Stop()
 
-	// TODO: Close database connections
-	// s.db.Close()
+	// Close database connections
+	s.db.Close()
 
 	// Shutdown Fiber app
 	return s.app.ShutdownWithContext(ctx)
 }
 
+// scheduleJobs sets up recurring sync jobs
+func (s *Server) scheduleJobs() {
+	// Schedule full sync daily at 3 AM
+	s.scheduler.AddCronJob("daily_full_sync", "0 3 * * *", func() {
+		ctx := context.Background()
+		s.logger.Info("Running scheduled full sync")
+		_, err := s.syncer.FullSync(ctx, s.config.Sleeper.PrimaryLeagueID)
+		if err != nil {
+			s.logger.Error("Scheduled full sync failed", zap.Error(err))
+		}
+	})
+
+	// Schedule roster sync every hour
+	s.scheduler.AddIntervalJob("hourly_roster_sync", time.Hour, func() {
+		ctx := context.Background()
+		s.logger.Info("Running scheduled roster sync")
+		err := s.syncer.SyncRosters(ctx, s.config.Sleeper.PrimaryLeagueID)
+		if err != nil {
+			s.logger.Error("Scheduled roster sync failed", zap.Error(err))
+		}
+	})
+
+	// Schedule transaction sync every 30 minutes
+	s.scheduler.AddIntervalJob("transaction_sync", 30*time.Minute, func() {
+		ctx := context.Background()
+		s.logger.Info("Running scheduled transaction sync")
+		
+		// Get current NFL week
+		nflState, err := s.syncer.GetNFLState(ctx)
+		if err != nil {
+			s.logger.Error("Failed to get NFL state", zap.Error(err))
+			return
+		}
+		
+		err = s.syncer.SyncTransactions(ctx, s.config.Sleeper.PrimaryLeagueID, nflState.Week)
+		if err != nil {
+			s.logger.Error("Scheduled transaction sync failed", zap.Error(err))
+		}
+	})
+
+	s.logger.Info("Scheduled jobs configured")
+}
+
 // customErrorHandler handles errors in a consistent way
-func customErrorHandler(c *fiber.Ctx, err error) error {
+func customErrorHandler(c *fiber.Ctx, err error, logger *zap.Logger) error {
 	// Default to 500 Internal Server Error
 	code := fiber.StatusInternalServerError
 	message := "Internal Server Error"
@@ -204,13 +284,13 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 	}
 
 	// Log error
-	log.Error().
-		Err(err).
-		Str("request_id", c.Locals("requestid").(string)).
-		Str("method", c.Method()).
-		Str("path", c.Path()).
-		Int("status", code).
-		Msg("Request error")
+	logger.Error("Request error",
+		zap.Error(err),
+		zap.String("request_id", c.Locals("requestid").(string)),
+		zap.String("method", c.Method()),
+		zap.String("path", c.Path()),
+		zap.Int("status", code),
+	)
 
 	// Return JSON error response
 	return c.Status(code).JSON(fiber.Map{
