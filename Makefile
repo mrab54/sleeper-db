@@ -42,6 +42,26 @@ db-init: ## Initialize database with schema
 db-migrate: ## Run database migrations
 	docker-compose exec hasura hasura migrate apply
 
+.PHONY: db-migrate-up
+db-migrate-up: ## Run all pending migrations up
+	./scripts/migrate.sh up
+
+.PHONY: db-migrate-down
+db-migrate-down: ## Rollback last migration
+	./scripts/migrate.sh down
+
+.PHONY: db-migrate-create
+db-migrate-create: ## Create new migration (usage: make db-migrate-create NAME=add_new_table)
+	./scripts/migrate.sh create $(NAME)
+
+.PHONY: db-migrate-version
+db-migrate-version: ## Check current migration version
+	./scripts/migrate.sh version
+
+.PHONY: db-migrate-force
+db-migrate-force: ## Force migration to specific version (usage: make db-migrate-force VERSION=1)
+	./scripts/migrate.sh force $(VERSION)
+
 .PHONY: db-console
 db-console: ## Open database console
 	docker-compose exec postgres psql -U ${POSTGRES_USER:-sleeper_user} -d ${POSTGRES_DB:-sleeper_db}

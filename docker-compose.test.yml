@@ -1,0 +1,135 @@
+# Test environment configuration
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit
+
+services:
+  # Test database with smaller resource limits
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: sleeper_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+    tmpfs:
+      - /var/lib/postgresql/data  # Use memory for faster tests
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Test Redis
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    tmpfs:
+      - /data
+
+  # Sync service test runner
+  sync-service-test:
+    build:
+      context: ./sync-service
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: test_user
+      DATABASE_PASSWORD: test_password
+      DATABASE_NAME: sleeper_test
+      DATABASE_SSL_MODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SERVER_ENVIRONMENT: test
+      SERVER_LOG_LEVEL: debug
+    volumes:
+      - ./sync-service:/app
+      - ./tests:/tests
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: |
+      sh -c "
+        echo 'Running unit tests...'
+        go test -v -race -coverprofile=coverage.out ./...
+        echo 'Running integration tests...'
+        go test -v -tags=integration ./tests/integration/...
+        echo 'Generating coverage report...'
+        go tool cover -html=coverage.out -o coverage.html
+      "
+
+  # Integration test runner
+  integration-test:
+    image: golang:1.22-alpine
+    environment:
+      DATABASE_URL: postgres://test_user:test_password@postgres:5432/sleeper_test?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      HASURA_URL: http://hasura:8080
+      API_URL: http://sync-service:8000
+    volumes:
+      - ./tests:/tests
+      - ./test-results:/test-results
+    working_dir: /tests
+    depends_on:
+      - postgres
+      - redis
+      - sync-service-test
+    command: |
+      sh -c "
+        apk add --no-cache git
+        go mod download
+        go test -v ./integration/... -outputdir=/test-results
+      "
+
+  # E2E test runner with headless browser
+  e2e-test:
+    image: mcr.microsoft.com/playwright:focal
+    environment:
+      GRAPHQL_ENDPOINT: http://hasura:8080/v1/graphql
+      API_ENDPOINT: http://sync-service:8000
+    volumes:
+      - ./tests/e2e:/tests
+      - ./test-results:/test-results
+    working_dir: /tests
+    depends_on:
+      - hasura
+      - sync-service-test
+    command: |
+      sh -c "
+        npm install
+        npm run test:e2e
+      "
+
+  # Load test runner
+  load-test:
+    image: grafana/k6:latest
+    environment:
+      API_URL: http://sync-service:8000
+      GRAPHQL_URL: http://hasura:8080/v1/graphql
+    volumes:
+      - ./tests/load:/scripts
+      - ./test-results:/test-results
+    depends_on:
+      - sync-service-test
+      - hasura
+    command: run -o json=/test-results/load-test.json /scripts/load-test.js
+
+# Override networks for isolated testing
+networks:
+  default:
+    name: test-network
+    driver: bridge
+
+# No persistent volumes in test environment
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  redis_data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs

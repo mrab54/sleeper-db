@@ -1,46 +1,71 @@
-version: '3.8'
+# Development environment overrides
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 
-# Development overrides for docker-compose.yml
 services:
+  # PostgreSQL with exposed port for local development
   postgres:
     ports:
-      - "5432:5432"  # Expose for local development tools
+      - "5432:5432"  # Expose to host for local tools
+    environment:
+      POSTGRES_LOG_STATEMENT: all  # Log all SQL statements
+      POSTGRES_LOG_DURATION: on    # Log query duration
+    volumes:
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./database/schema:/schema:ro
+      - ./database/seeds:/seeds:ro  # Add seed data in dev
 
+  # Redis with persistence disabled for faster dev
   redis:
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
-      - "6379:6379"  # Expose for local development
+      - "6379:6379"  # Expose for local tools
 
+  # Hasura with console enabled
   hasura:
     environment:
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_DEV_MODE: "true"
-      HASURA_GRAPHQL_LOG_LEVEL: "debug"
-    ports:
-      - "8080:8080"  # Direct access to Hasura console
+      HASURA_GRAPHQL_ENABLE_ALLOWLIST: "false"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup,http-log,webhook-log,query-log
+      HASURA_GRAPHQL_LOG_LEVEL: debug
+    volumes:
+      - ./hasura/metadata:/hasura-metadata:ro
+      - ./hasura/migrations:/hasura-migrations:ro
 
+  # Sync service with hot reload
   sync-service:
     build:
-      target: development  # Use development stage with hot reload
+      context: ./sync-service
+      dockerfile: Dockerfile
+      target: development  # Use development stage
     volumes:
-      - ./sync-service:/app  # Mount source code for hot reload
-      - /app/tmp  # Exclude tmp directory
+      - ./sync-service:/app  # Mount source for hot reload
+      - /app/vendor  # Exclude vendor directory
     environment:
       SERVER_ENVIRONMENT: development
       SERVER_LOG_LEVEL: debug
-      # Enable pprof for profiling in development
+      ENABLE_DEBUG_ENDPOINTS: "true"
       ENABLE_PPROF: "true"
+      GO_ENV: development
     ports:
-      - "8000:8000"  # Direct access
+      - "8000:8000"  # API
       - "6060:6060"  # pprof debug port
     command: ["air", "-c", ".air.toml"]  # Use air for hot reload
 
+  # Prometheus with shorter retention for dev
   prometheus:
-    ports:
-      - "9090:9090"  # Direct access to Prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'  # Shorter retention in dev
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--log.level=debug'
 
+  # Grafana with default login disabled
   grafana:
-    ports:
-      - "3000:3000"  # Direct access to Grafana
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"  # Easy access in dev
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_LOG_LEVEL: debug
