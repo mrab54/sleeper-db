@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   sleeper-net:
     driver: bridge
@@ -8,9 +6,11 @@ networks:
         - subnet: 172.25.0.0/16
 
 volumes:
+  config_data:
+    driver: local
   postgres_data:
     driver: local
-  redis_data:
+  postgres_raw_data:
     driver: local
   prometheus_data:
     driver: local
@@ -18,15 +18,15 @@ volumes:
     driver: local
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database - Analytics (Normalized)
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: sleeper-postgres
     restart: unless-stopped
     networks:
       - sleeper-net
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-sleeper_db}
       POSTGRES_USER: ${POSTGRES_USER:-sleeper_user}
@@ -34,8 +34,7 @@ services:
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init:/docker-entrypoint-initdb.d:ro
-      - ./database/schema:/schema:ro
+      - ./database/analytics:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sleeper_user}"]
       interval: 10s
@@ -50,31 +49,36 @@ services:
           cpus: '1'
           memory: 1G
 
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: sleeper-redis
+  # PostgreSQL Database - Raw API Data
+  postgres-raw:
+    image: postgres:17-alpine
+    container_name: sleeper-postgres-raw
     restart: unless-stopped
     networks:
       - sleeper-net
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:5434:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_RAW_DB:-sleeper_raw}
+      POSTGRES_USER: ${POSTGRES_USER:-sleeper_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+      - postgres_raw_data:/var/lib/postgresql/data
+      - ./database/raw:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sleeper_user}"]
       interval: 10s
       timeout: 5s
       retries: 5
     deploy:
       resources:
         limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
           cpus: '0.5'
           memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
   # Hasura GraphQL Engine
   hasura:
@@ -89,20 +93,17 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER:-sleeper_user}:${POSTGRES_PASSWORD:-sleeper_password}@postgres:5432/${POSTGRES_DB:-sleeper_db}?options=-csearch_path%3Dsleeper
+      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER:-sleeper_user}:${POSTGRES_PASSWORD:-sleeper_password}@postgres:5432/${POSTGRES_DB:-sleeper_db}?options=-csearch_path%3Danalytics
       HASURA_GRAPHQL_ENABLE_CONSOLE: ${HASURA_ENABLE_CONSOLE:-true}
-      HASURA_GRAPHQL_DEV_MODE: ${HASURA_DEV_MODE:-true}
-      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-myadminsecret}
+      # Instead of dev mode, explicitly control what we want:
+      HASURA_GRAPHQL_ENABLE_ALLOWLIST: ${HASURA_ENABLE_ALLOWLIST:-false}
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: ${HASURA_LOG_TYPES:-startup,http-log,query-log}
+      HASURA_GRAPHQL_LOG_LEVEL: ${HASURA_LOG_LEVEL:-info}
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-changeme_admin_secret_here}
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
       HASURA_GRAPHQL_ENABLE_TELEMETRY: "false"
-      HASURA_GRAPHQL_ENABLE_QUERY_CACHING: "true"
-      HASURA_GRAPHQL_REDIS_URL: redis://redis:6379
-      HASURA_GRAPHQL_RATE_LIMIT_REDIS_URL: redis://redis:6379
       HASURA_GRAPHQL_EVENTS_FETCH_BATCH_SIZE: 100
-      HASURA_GRAPHQL_METADATA_DIR: /hasura-metadata
-    volumes:
-      - ./hasura/metadata:/hasura-metadata:ro
-      - ./hasura/migrations:/hasura-migrations:ro
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://${POSTGRES_USER:-sleeper_user}:${POSTGRES_PASSWORD:-sleeper_password}@postgres:5432/${POSTGRES_DB:-sleeper_db}?options=-csearch_path%3Danalytics
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 10s
@@ -129,20 +130,22 @@ services:
     networks:
       - sleeper-net
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - config_data:/app/config
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      postgres-raw:
         condition: service_healthy
     environment:
       # Server
       SERVER_PORT: 8000
       SERVER_HOST: 0.0.0.0
-      SERVER_ENVIRONMENT: ${ENVIRONMENT:-production}
+      SERVER_ENVIRONMENT: ${ENVIRONMENT:-development}
       SERVER_LOG_LEVEL: ${LOG_LEVEL:-info}
       
-      # Database
+      # Analytics Database (Normalized)
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
       DATABASE_USER: ${POSTGRES_USER:-sleeper_user}
@@ -150,20 +153,24 @@ services:
       DATABASE_NAME: ${POSTGRES_DB:-sleeper_db}
       DATABASE_SSL_MODE: disable
       
-      # Redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      # Raw Database (API Responses)
+      DATABASE_RAW_HOST: postgres-raw
+      DATABASE_RAW_PORT: 5432
+      DATABASE_RAW_USER: ${POSTGRES_USER:-sleeper_user}
+      DATABASE_RAW_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
+      DATABASE_RAW_NAME: ${POSTGRES_RAW_DB:-sleeper_raw}
+      DATABASE_RAW_SSL_MODE: disable
       
       # Sleeper API
       SLEEPER_BASE_URL: ${SLEEPER_API_BASE_URL:-https://api.sleeper.app/v1}
       SLEEPER_PRIMARY_LEAGUE_ID: ${PRIMARY_LEAGUE_ID:-1199102384316362752}
       
       # Hasura
-      HASURA_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-myadminsecret}
+      HASURA_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-changeme_admin_secret_here}
       HASURA_ENDPOINT: http://hasura:8080
       
       # Go specific
-      GOMAXPROCS: 4
+      GOMAXPROCS: 2
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
       interval: 30s
@@ -174,10 +181,10 @@ services:
       resources:
         limits:
           cpus: '2'
-          memory: 512M
+          memory: 4G
         reservations:
           cpus: '0.5'
-          memory: 128M
+          memory: 512M
 
   # Prometheus Metrics
   prometheus:
@@ -217,7 +224,6 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
-      GF_INSTALL_PLUGINS: redis-datasource
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro

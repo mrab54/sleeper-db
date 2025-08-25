@@ -16,8 +16,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the binary with optimizations
+# Build the binary with optimizations (using -mod=mod to ignore vendor)
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -mod=mod \
     -ldflags="-w -s -X main.version=v0.1.0 -X main.commit=unknown -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     -tags netgo \
     -o sleeper-sync \
@@ -33,8 +34,8 @@ RUN apk add --no-cache git make ca-certificates tzdata curl
 
 WORKDIR /app
 
-# Install air for hot reload in development
-RUN go install github.com/air-verse/air@latest
+# Install air for hot reload in development (v1.52.3 is compatible with Go 1.22)
+RUN go install github.com/air-verse/air@v1.52.3
 
 # Copy go mod files
 COPY go.mod go.sum ./

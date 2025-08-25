@@ -1,0 +1,47 @@
+# WSL 2 Configuration
+# This file controls how much of your Windows resources WSL 2 can use
+# Copy this file to C:\Users\<YourUsername>\.wslconfig
+
+[wsl2]
+# How many CPU cores WSL 2 can use
+# Default: All cores
+# Current: 32 cores available
+# Recommended: Leave some for Windows (e.g., 28 out of 32)
+processors=28
+
+# How much RAM WSL 2 can use
+# Default: 50% of total RAM on Windows
+# Current: 46GB (you likely have ~92GB total)
+# Recommended: 64GB (leaves 28GB for Windows)
+memory=64GB
+
+# Swap space
+# Default: 25% of RAM
+# Current: 12GB
+# Recommended: 16GB
+swap=16GB
+
+# Where to store the swap file
+# Default: %USERPROFILE%\AppData\Local\Temp\swap.vhdx
+# swapFile=C:\\temp\\wsl-swap.vhdx
+
+# Disable page reporting to save CPU cycles
+# Default: true
+pageReporting=false
+
+# Memory reclaim mode
+# Options: gradual (default), dropcache, disabled
+# gradual = slowly reclaim unused memory
+# disabled = better performance but uses more RAM
+autoMemoryReclaim=gradual
+
+# Enable nested virtualization (for running VMs inside WSL)
+# Default: true
+nestedVirtualization=true
+
+# Experimental network mode for better compatibility
+# Uncomment if having network issues
+# networkingMode=mirrored
+
+# Debug options (uncomment if troubleshooting)
+# debugConsole=true

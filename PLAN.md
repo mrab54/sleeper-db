@@ -316,6 +316,15 @@ Build a production-ready, scalable system that maintains a normalized PostgreSQL
 ## Phase 4: Sync Service Development (Week 2-3)
 
 ### 4.1 Core Architecture
+- [ ] **TODO**: Integrate config_data volume for persistent app configuration
+  - Create config.json structure for app settings (API keys, league IDs, sync schedules)
+  - Mount config_data volume at /app/config in sync-service
+  - Implement config file reading/writing in Go service
+  - Support hot-reloading of config changes
+  - Provide default config template
+  - Allow config override via environment variables
+  - Document config schema and options
+
 - [ ] **SYNC-001**: Implement base sync service structure in Go
   ```
   sync-service/
@@ -455,11 +464,39 @@ Build a production-ready, scalable system that maintains a normalized PostgreSQL
   )
   ```
 
-- [ ] **SYNC-013**: Implement structured logging with zerolog
+- [x] **SYNC-013**: Implemented structured logging ✅
+  - Using zap instead of zerolog
   - JSON formatted logs
   - Request IDs for tracing
-  - Log aggregation with Loki
   - Debug/Info/Error log levels
+
+### 4.6 ETL Pipeline ✅ COMPLETED (Added)
+- [x] **ETL-001**: Implemented two-database architecture ✅
+  - Raw database stores API responses as-is
+  - Analytics database has normalized structure
+  - Change detection using SHA256 hashing
+  
+- [x] **ETL-002**: Created raw data fetcher ✅
+  - Fetches all Sleeper API endpoints
+  - Stores in raw database with metadata
+  - Tracks sync runs and endpoints
+  - Handles deduplication
+
+- [x] **ETL-003**: Built ETL processor ✅
+  - Reads unprocessed responses from raw DB
+  - Transforms JSON to normalized structures
+  - Inserts into analytics database
+  - Marks responses as processed
+  - Comprehensive error handling
+
+- [x] **ETL-004**: Implemented transformers for all data types ✅
+  - League & settings transformer
+  - Users transformer
+  - Rosters with temporal tracking
+  - Matchups and player stats
+  - Transactions with adds/drops/FAAB
+  - NFL players with positions/status
+  - NFL state/seasons
 
 ## Phase 5: Hasura Configuration (Week 3)
 
@@ -862,20 +899,43 @@ Build a production-ready, scalable system that maintains a normalized PostgreSQL
 4. Establish development environment
 5. Start weekly progress reviews
 
+## Current Architecture Status
+
+### What's Complete:
+1. **Two-Database System**: Raw (5434) and Analytics (5433) databases fully operational
+2. **Raw Data Collection**: All Sleeper API endpoints fetched and stored
+3. **ETL Pipeline**: Complete transformation from raw JSON to normalized tables
+4. **Scheduling**: Automated jobs for fetching and processing
+5. **API Endpoints**: REST API for triggering syncs and ETL
+6. **Error Handling**: Comprehensive error tracking and recovery
+
+### What's Working:
+- Fetching league, users, rosters, matchups, transactions, players
+- Storing raw API responses with change detection
+- ETL processing with temporal tracking
+- Two database connections (raw + analytics)
+- Scheduled jobs (raw fetch at 2 AM, ETL every 30 min)
+- Health checks and readiness probes
+- API endpoints:
+  - `/api/v1/raw/fetch/league/:id`
+  - `/api/v1/raw/fetch/players`
+  - `/api/v1/raw/fetch/nfl-state`
+  - `/api/v1/etl/process`
+
 ## Appendices
 
 ### A. Technology Stack (Updated to Go)
-- **Language**: Go 1.21+
+- **Language**: Go 1.22+
 - **Web Framework**: Fiber v2
 - **HTTP Client**: resty/v2 + net/http
 - **Database Driver**: pgx/v5
 - **Scheduler**: gocron v2
-- **Database**: PostgreSQL 15+
+- **Database**: PostgreSQL 17
 - **GraphQL**: Hasura 2.36+
-- **Container**: Docker 24+ (scratch/alpine for Go)
-- **Orchestration**: Docker Compose / Kubernetes
+- **Container**: Docker 24+ (alpine for Go)
+- **Orchestration**: Docker Compose
 - **Monitoring**: Prometheus + Grafana
-- **Logging**: zerolog
+- **Logging**: zap
 - **CI/CD**: GitHub Actions
 
 ### B. Development Tools

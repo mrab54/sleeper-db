@@ -1,4 +1,4 @@
-- name: sleeper_db
+- name: default
   kind: postgres
   configuration:
     connection_info:
@@ -15,66 +15,198 @@
   - table:
       schema: sleeper
       name: users
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: users
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: leagues
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: leagues
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: league_settings
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: league_settings
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: league_scoring_settings
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: league_scoring_settings
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: rosters
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: rosters
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: players
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: players
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: roster_players
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: roster_players
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: matchups
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: matchups
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: matchup_players
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: matchup_players
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: transactions
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: transactions
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: transaction_details
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: transaction_details
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: drafts
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: drafts
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: draft_picks
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: draft_picks
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: traded_picks
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: traded_picks
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: player_stats
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: player_stats
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: playoff_brackets
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: playoff_brackets
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: sync_log
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: sync_log
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: api_cache
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: api_cache
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: nfl_state
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: nfl_state
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: v_league_standings
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: league_standings
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: v_recent_transactions
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: recent_transactions
+      custom_root_fields: {}
   - table:
       schema: sleeper
       name: v_current_matchups
+    configuration:
+      column_config: {}
+      computed_fields: []
+      custom_column_names: {}
+      custom_name: current_matchups
+      custom_root_fields: {}

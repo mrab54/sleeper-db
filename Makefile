@@ -1,3 +1,14 @@
+# Variables
+HASURA_ENDPOINT := http://localhost:8080
+HASURA_ADMIN_SECRET := changeme_admin_secret_here
+COMPOSE := docker-compose
+
+# Colors for output
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+NC := \033[0m # No Color
+
 .PHONY: help
 help: ## Display this help message
 	@echo "Sleeper DB - Development Commands"
@@ -6,6 +17,57 @@ help: ## Display this help message
 	@echo ""
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: install-cli
+install-cli: ## Install Hasura CLI locally
+	@echo "$(GREEN)Installing Hasura CLI...$(NC)"
+	@mkdir -p bin
+	@curl -L https://github.com/hasura/graphql-engine/releases/download/v2.46.0/cli-hasura-linux-amd64 -o bin/hasura
+	@chmod +x bin/hasura
+	@echo "$(GREEN)Hasura CLI installed to bin/hasura$(NC)"
+
+.PHONY: track-all
+track-all: ## Track all tables and relationships
+	@echo "$(GREEN)Tracking all tables and relationships...$(NC)"
+	@docker exec sleeper-hasura-init /tools/init-hasura-metadata.sh || \
+	docker run --rm --network sleeper-db_sleeper-net \
+		-e HASURA_URL=http://hasura:8080 \
+		-e HASURA_ADMIN_SECRET=$(HASURA_ADMIN_SECRET) \
+		sleeper-tools:latest /tools/init-hasura-metadata.sh
+
+.PHONY: sync
+sync: ## Trigger full data sync
+	@echo "$(GREEN)Triggering full sync...$(NC)"
+	@curl -X POST http://localhost:8000/api/v1/sync/full \
+		-H "Content-Type: application/json" \
+		-d '{"league_id": "1199102384316362752"}' | jq
+	@echo "$(GREEN)Sync complete!$(NC)"
+
+.PHONY: status
+status: ## Check service status
+	@echo "$(GREEN)Checking service status...$(NC)"
+	@echo "\n📊 Database:"
+	@docker exec sleeper-postgres pg_isready -U sleeper_user || echo "$(RED)Database not ready$(NC)"
+	@echo "\n🚀 Hasura:"
+	@curl -s -o /dev/null -w "Status: %{http_code}\n" http://localhost:8080/healthz || echo "$(RED)Hasura not ready$(NC)"
+	@echo "\n🔄 Sync Service:"
+	@curl -s http://localhost:8000/health | jq || echo "$(RED)Sync service not ready$(NC)"
+	@echo "\n📈 Data counts:"
+	@curl -s http://localhost:8080/v1/graphql \
+		-H "X-Hasura-Admin-Secret: $(HASURA_ADMIN_SECRET)" \
+		-H "Content-Type: application/json" \
+		-d '{"query":"{ leagues_aggregate { aggregate { count } } users_aggregate { aggregate { count } } players_aggregate { aggregate { count } } }"}' | \
+		jq '.data' || echo "$(RED)Could not query data$(NC)"
+
+.PHONY: rebuild
+rebuild: clean ## Clean rebuild from scratch
+	@echo "$(GREEN)Rebuilding everything from scratch...$(NC)"
+	@$(COMPOSE) build
+	@$(COMPOSE) up -d
+	@echo "$(GREEN)Waiting for services to initialize...$(NC)"
+	@sleep 20
+	@make sync
+	@echo "$(GREEN)Rebuild complete!$(NC)"
 
 # Development
 .PHONY: dev

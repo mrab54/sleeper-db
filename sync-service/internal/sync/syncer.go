@@ -63,7 +63,7 @@ func (s *Syncer) FullSync(ctx context.Context, leagueID string) (*SyncResult, er
 		s.logger.Error("Failed to log sync start", zap.Error(err))
 	}
 
-	// Sync league
+	// Sync league first
 	if err := s.SyncLeague(ctx, leagueID); err != nil {
 		result.Success = false
 		result.Errors = append(result.Errors, fmt.Errorf("league sync failed: %w", err))
@@ -72,14 +72,21 @@ func (s *Syncer) FullSync(ctx context.Context, leagueID string) (*SyncResult, er
 	}
 	result.RecordsProcessed++
 
-	// Sync users
+	// Sync users (required for rosters foreign key)
 	if err := s.SyncUsers(ctx, leagueID); err != nil {
 		result.Success = false
 		result.Errors = append(result.Errors, fmt.Errorf("users sync failed: %w", err))
 		s.logSyncError(ctx, syncID, err)
 	}
 
-	// Sync rosters
+	// Sync all players (required for roster_players foreign key)
+	if err := s.SyncPlayers(ctx); err != nil {
+		result.Errors = append(result.Errors, fmt.Errorf("players sync failed: %w", err))
+		s.logSyncError(ctx, syncID, err)
+		// Continue even if players sync fails
+	}
+
+	// Sync rosters (depends on users and players)
 	if err := s.SyncRosters(ctx, leagueID); err != nil {
 		result.Success = false
 		result.Errors = append(result.Errors, fmt.Errorf("rosters sync failed: %w", err))
@@ -108,10 +115,7 @@ func (s *Syncer) FullSync(ctx context.Context, leagueID string) (*SyncResult, er
 		}
 	}
 
-	// Sync all players (this is a large operation)
-	if err := s.SyncPlayers(ctx); err != nil {
-		result.Errors = append(result.Errors, fmt.Errorf("players sync failed: %w", err))
-	}
+	// Players already synced above before rosters
 
 	result.Duration = time.Since(start)
 

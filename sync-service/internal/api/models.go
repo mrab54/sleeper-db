@@ -8,7 +8,7 @@ import (
 // User represents a Sleeper user
 type User struct {
 	UserID      string          `json:"user_id"`
-	Username    string          `json:"username"`
+	Username    *string         `json:"username"`
 	DisplayName string          `json:"display_name"`
 	Avatar      string          `json:"avatar"`
 	Metadata    json.RawMessage `json:"metadata"`
@@ -108,46 +108,46 @@ type Transaction struct {
 
 // Player represents an NFL player
 type Player struct {
-	PlayerID             string   `json:"player_id"`
-	FirstName            string   `json:"first_name"`
-	LastName             string   `json:"last_name"`
-	FullName             string   `json:"full_name"`
-	Position             string   `json:"position"`
-	Team                 string   `json:"team"`
-	Age                  int      `json:"age"`
-	YearsExp             int      `json:"years_exp"`
-	College              string   `json:"college"`
-	Weight               string   `json:"weight"`
-	Height               string   `json:"height"`
-	BirthDate            string   `json:"birth_date"`
-	BirthCountry         string   `json:"birth_country"`
-	BirthState           string   `json:"birth_state"`
-	BirthCity            string   `json:"birth_city"`
-	HighSchool           string   `json:"high_school"`
-	DepthChartPosition   string   `json:"depth_chart_position"`
-	DepthChartOrder      int      `json:"depth_chart_order"`
-	GsisID               string   `json:"gsis_id"`
-	EspnID               string   `json:"espn_id"`
-	YahooID              string   `json:"yahoo_id"`
-	FantasyDataID        int      `json:"fantasy_data_id"`
-	Number               int      `json:"number"`
-	InjuryStatus         string   `json:"injury_status"`
-	InjuryBodyPart       string   `json:"injury_body_part"`
-	InjuryStartDate      string   `json:"injury_start_date"`
-	InjuryNotes          string   `json:"injury_notes"`
-	PracticeParticipation string  `json:"practice_participation"`
-	PracticeDescription  string   `json:"practice_description"`
-	News                 []string `json:"news"`
-	Status               string   `json:"status"`
-	Sport                string   `json:"sport"`
-	Active               bool     `json:"active"`
-	SearchFirstName      string   `json:"search_first_name"`
-	SearchLastName       string   `json:"search_last_name"`
-	SearchFullName       string   `json:"search_full_name"`
-	SearchRank           int      `json:"search_rank"`
-	FantasyPositions     []string `json:"fantasy_positions"`
+	PlayerID             string                            `json:"player_id"`
+	FirstName            *string                           `json:"first_name"`
+	LastName             *string                           `json:"last_name"`
+	FullName             *string                           `json:"full_name"`
+	Position             *string                           `json:"position"`
+	Team                 *string                           `json:"team"`
+	Age                  *int                              `json:"age"`
+	YearsExp             *int                              `json:"years_exp"`
+	College              *string                           `json:"college"`
+	Weight               *string                           `json:"weight"`
+	Height               *string                           `json:"height"`
+	BirthDate            *string                           `json:"birth_date"`
+	BirthCountry         *string                           `json:"birth_country"`
+	BirthState           *string                           `json:"birth_state"`
+	BirthCity            *string                           `json:"birth_city"`
+	HighSchool           *string                           `json:"high_school"`
+	DepthChartPosition   *string                           `json:"depth_chart_position"`
+	DepthChartOrder      *int                              `json:"depth_chart_order"`
+	GsisID               *string                           `json:"gsis_id"`
+	EspnID               *int                              `json:"espn_id"`
+	YahooID              *int                              `json:"yahoo_id"`
+	FantasyDataID        *int                              `json:"fantasy_data_id"`
+	Number               *int                              `json:"number"`
+	InjuryStatus         *string                           `json:"injury_status"`
+	InjuryBodyPart       *string                           `json:"injury_body_part"`
+	InjuryStartDate      *string                           `json:"injury_start_date"`
+	InjuryNotes          *string                           `json:"injury_notes"`
+	PracticeParticipation *string                          `json:"practice_participation"`
+	PracticeDescription  *string                           `json:"practice_description"`
+	News                 []string                          `json:"news"`
+	Status               *string                           `json:"status"`
+	Sport                *string                           `json:"sport"`
+	Active               *bool                             `json:"active"`
+	SearchFirstName      *string                           `json:"search_first_name"`
+	SearchLastName       *string                           `json:"search_last_name"`
+	SearchFullName       *string                           `json:"search_full_name"`
+	SearchRank           *int                              `json:"search_rank"`
+	FantasyPositions     []string                          `json:"fantasy_positions"`
 	Stats                map[string]map[string]interface{} `json:"stats"`
-	Metadata             json.RawMessage `json:"metadata"`
+	Metadata             json.RawMessage                   `json:"metadata"`
 }
 
 // NFLState represents the current state of the NFL

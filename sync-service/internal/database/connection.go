@@ -25,6 +25,7 @@ type Config struct {
 	Password     string
 	Database     string
 	SSLMode      string
+	Schema       string // Schema to use (analytics or raw)
 	MaxConns     int32
 	MinConns     int32
 	MaxConnLifetime time.Duration
@@ -33,8 +34,14 @@ type Config struct {
 
 // NewDB creates a new database connection
 func NewDB(ctx context.Context, cfg *Config, logger *zap.Logger) (*DB, error) {
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s&search_path=sleeper",
-		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.SSLMode)
+	// Default schema if not specified
+	schema := cfg.Schema
+	if schema == "" {
+		schema = "public"
+	}
+	
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s&search_path=%s",
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.SSLMode, schema)
 
 	poolConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
@@ -119,4 +126,16 @@ func (db *DB) Query(ctx context.Context, sql string, args ...interface{}) (pgx.R
 // QueryRow executes a query that returns at most one row
 func (db *DB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
 	return db.pool.QueryRow(ctx, sql, args...)
+}
+
+// NewAnalyticsDB creates a new connection to the analytics database
+func NewAnalyticsDB(ctx context.Context, cfg *Config, logger *zap.Logger) (*DB, error) {
+	cfg.Schema = "analytics"
+	return NewDB(ctx, cfg, logger)
+}
+
+// NewRawDB creates a new connection to the raw database
+func NewRawDB(ctx context.Context, cfg *Config, logger *zap.Logger) (*DB, error) {
+	cfg.Schema = "raw"
+	return NewDB(ctx, cfg, logger)
 }

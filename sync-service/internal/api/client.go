@@ -95,6 +95,17 @@ func (c *SleeperClient) GetLeague(ctx context.Context, leagueID string) (*League
 	return &league, err
 }
 
+// GetUser fetches a single user by ID
+func (c *SleeperClient) GetUser(ctx context.Context, userID string) (*User, error) {
+	var user User
+	endpoint := fmt.Sprintf("/user/%s", userID)
+	err := c.doRequest(ctx, http.MethodGet, endpoint, &user)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 // GetUsers fetches all users in a league
 func (c *SleeperClient) GetUsers(ctx context.Context, leagueID string) ([]User, error) {
 	var users []User

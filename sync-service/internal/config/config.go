@@ -9,12 +9,12 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Sleeper  SleeperConfig  `mapstructure:"sleeper"`
-	Hasura   HasuraConfig   `mapstructure:"hasura"`
-	Metrics  MetricsConfig  `mapstructure:"metrics"`
+	Server      ServerConfig   `mapstructure:"server"`
+	Database    DatabaseConfig `mapstructure:"database"`
+	DatabaseRaw DatabaseConfig `mapstructure:"database_raw"`
+	Sleeper     SleeperConfig  `mapstructure:"sleeper"`
+	Hasura      HasuraConfig   `mapstructure:"hasura"`
+	Metrics     MetricsConfig  `mapstructure:"metrics"`
 }
 
 // ServerConfig contains HTTP server settings
@@ -42,19 +42,6 @@ type DatabaseConfig struct {
 	MaxConnIdleTime time.Duration `mapstructure:"max_conn_idle_time"`
 }
 
-// RedisConfig contains Redis cache settings
-type RedisConfig struct {
-	Host         string        `mapstructure:"host"`
-	Port         int           `mapstructure:"port"`
-	Password     string        `mapstructure:"password"`
-	Database     int           `mapstructure:"database"`
-	MaxRetries   int           `mapstructure:"max_retries"`
-	DialTimeout  time.Duration `mapstructure:"dial_timeout"`
-	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout time.Duration `mapstructure:"write_timeout"`
-	PoolSize     int           `mapstructure:"pool_size"`
-	MinIdleConns int           `mapstructure:"min_idle_conns"`
-}
 
 // SleeperConfig contains Sleeper API settings
 type SleeperConfig struct {
@@ -82,6 +69,7 @@ type MetricsConfig struct {
 func Load() (*Config, error) {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
+	viper.AddConfigPath("/app/config")  // Docker volume mount
 	viper.AddConfigPath("/etc/sleeper/")
 	viper.AddConfigPath("$HOME/.sleeper")
 	viper.AddConfigPath(".")
@@ -103,8 +91,13 @@ func Load() (*Config, error) {
 	viper.BindEnv("database.database", "DATABASE_NAME")
 	viper.BindEnv("database.ssl_mode", "DATABASE_SSL_MODE")
 	
-	viper.BindEnv("redis.host", "REDIS_HOST")
-	viper.BindEnv("redis.port", "REDIS_PORT")
+	// Raw database bindings
+	viper.BindEnv("database_raw.host", "DATABASE_RAW_HOST")
+	viper.BindEnv("database_raw.port", "DATABASE_RAW_PORT")
+	viper.BindEnv("database_raw.user", "DATABASE_RAW_USER")
+	viper.BindEnv("database_raw.password", "DATABASE_RAW_PASSWORD")
+	viper.BindEnv("database_raw.database", "DATABASE_RAW_NAME")
+	viper.BindEnv("database_raw.ssl_mode", "DATABASE_RAW_SSL_MODE")
 	
 	viper.BindEnv("sleeper.base_url", "SLEEPER_BASE_URL")
 	viper.BindEnv("sleeper.primary_league_id", "SLEEPER_PRIMARY_LEAGUE_ID")
@@ -144,7 +137,7 @@ func setDefaults() {
 	viper.SetDefault("server.write_timeout", 30*time.Second)
 	viper.SetDefault("server.idle_timeout", 120*time.Second)
 
-	// Database defaults
+	// Analytics Database defaults
 	viper.SetDefault("database.host", "localhost")
 	viper.SetDefault("database.port", 5432)
 	viper.SetDefault("database.ssl_mode", "disable")
@@ -153,16 +146,14 @@ func setDefaults() {
 	viper.SetDefault("database.max_conn_lifetime", time.Hour)
 	viper.SetDefault("database.max_conn_idle_time", 30*time.Minute)
 
-	// Redis defaults
-	viper.SetDefault("redis.host", "localhost")
-	viper.SetDefault("redis.port", 6379)
-	viper.SetDefault("redis.database", 0)
-	viper.SetDefault("redis.max_retries", 3)
-	viper.SetDefault("redis.dial_timeout", 5*time.Second)
-	viper.SetDefault("redis.read_timeout", 3*time.Second)
-	viper.SetDefault("redis.write_timeout", 3*time.Second)
-	viper.SetDefault("redis.pool_size", 10)
-	viper.SetDefault("redis.min_idle_conns", 5)
+	// Raw Database defaults
+	viper.SetDefault("database_raw.host", "localhost")
+	viper.SetDefault("database_raw.port", 5434)
+	viper.SetDefault("database_raw.ssl_mode", "disable")
+	viper.SetDefault("database_raw.max_connections", 25)
+	viper.SetDefault("database_raw.min_connections", 5)
+	viper.SetDefault("database_raw.max_conn_lifetime", time.Hour)
+	viper.SetDefault("database_raw.max_conn_idle_time", 30*time.Minute)
 
 	// Sleeper API defaults
 	viper.SetDefault("sleeper.base_url", "https://api.sleeper.app/v1")
@@ -178,18 +169,32 @@ func setDefaults() {
 
 // validate checks if the configuration is valid
 func validate(cfg *Config) error {
-	// Database validation
+	// Analytics Database validation
 	if cfg.Database.User == "" {
-		return fmt.Errorf("database user is required")
+		return fmt.Errorf("analytics database user is required")
 	}
 	if cfg.Database.Database == "" {
-		return fmt.Errorf("database name is required")
+		return fmt.Errorf("analytics database name is required")
 	}
 	if cfg.Database.Host == "" {
-		return fmt.Errorf("database host is required")
+		return fmt.Errorf("analytics database host is required")
 	}
 	if cfg.Database.Port <= 0 || cfg.Database.Port > 65535 {
-		return fmt.Errorf("invalid database port: %d", cfg.Database.Port)
+		return fmt.Errorf("invalid analytics database port: %d", cfg.Database.Port)
+	}
+	
+	// Raw Database validation
+	if cfg.DatabaseRaw.User == "" {
+		return fmt.Errorf("raw database user is required")
+	}
+	if cfg.DatabaseRaw.Database == "" {
+		return fmt.Errorf("raw database name is required")
+	}
+	if cfg.DatabaseRaw.Host == "" {
+		return fmt.Errorf("raw database host is required")
+	}
+	if cfg.DatabaseRaw.Port <= 0 || cfg.DatabaseRaw.Port > 65535 {
+		return fmt.Errorf("invalid raw database port: %d", cfg.DatabaseRaw.Port)
 	}
 	
 	// Sleeper API validation
@@ -200,14 +205,6 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("Sleeper API base URL is required")
 	}
 	
-	// Redis validation
-	if cfg.Redis.Host == "" {
-		return fmt.Errorf("Redis host is required")
-	}
-	if cfg.Redis.Port <= 0 || cfg.Redis.Port > 65535 {
-		return fmt.Errorf("invalid Redis port: %d", cfg.Redis.Port)
-	}
-	
 	// Server validation
 	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
 		return fmt.Errorf("invalid server port: %d", cfg.Server.Port)
@@ -216,13 +213,14 @@ func validate(cfg *Config) error {
 	return nil
 }
 
-// GetDSN returns the PostgreSQL connection string
+// GetDSN returns the PostgreSQL connection string for analytics database
 func (c *DatabaseConfig) GetDSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s&search_path=sleeper",
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s&search_path=analytics",
 		c.User, c.Password, c.Host, c.Port, c.Database, c.SSLMode)
 }
 
-// GetRedisAddr returns the Redis address
-func (c *RedisConfig) GetAddr() string {
-	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+// GetRawDSN returns the PostgreSQL connection string for raw database
+func (c *DatabaseConfig) GetRawDSN() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s&search_path=raw",
+		c.User, c.Password, c.Host, c.Port, c.Database, c.SSLMode)
 }

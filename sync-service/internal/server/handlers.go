@@ -63,9 +63,6 @@ func (s *Server) handleReady(c *fiber.Ctx) error {
 		checks["sleeper_api"] = true
 	}
 
-	// Redis check not implemented yet
-	checks["redis"] = true
-
 	status := fiber.StatusOK
 	if !ready {
 		status = fiber.StatusServiceUnavailable
@@ -258,6 +255,9 @@ func (s *Server) handleManualSync(c *fiber.Ctx) error {
 	case "league":
 		err = s.syncer.SyncLeague(c.Context(), leagueID)
 		recordsUpdated = 1
+	case "users":
+		err = s.syncer.SyncUsers(c.Context(), leagueID)
+		recordsUpdated = 12 // Estimate
 	case "rosters":
 		err = s.syncer.SyncRosters(c.Context(), leagueID)
 		recordsUpdated = 10 // Estimate
@@ -304,4 +304,107 @@ func (s *Server) handleSyncStatus(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(status)
+}
+
+// Raw data fetching handlers
+
+// handleFetchRawLeague fetches all raw data for a league
+func (s *Server) handleFetchRawLeague(c *fiber.Ctx) error {
+	start := time.Now()
+	leagueID := c.Params("id")
+	
+	if leagueID == "" {
+		leagueID = s.config.Sleeper.PrimaryLeagueID
+	}
+	
+	log.Info().
+		Str("league_id", leagueID).
+		Msg("Starting raw data fetch for league")
+	
+	// Fetch all raw data for the league
+	err := s.rawFetcher.FetchAllLeagueData(c.Context(), leagueID)
+	if err != nil {
+		log.Error().Err(err).Str("league_id", leagueID).Msg("Raw league fetch failed")
+		return fiber.NewError(fiber.StatusInternalServerError, "Raw fetch failed: " + err.Error())
+	}
+	
+	return c.JSON(fiber.Map{
+		"success":   true,
+		"message":   "Raw league data fetched successfully",
+		"league_id": leagueID,
+		"duration":  time.Since(start).String(),
+		"timestamp": time.Now(),
+	})
+}
+
+// handleFetchRawPlayers fetches the NFL players database
+func (s *Server) handleFetchRawPlayers(c *fiber.Ctx) error {
+	start := time.Now()
+	
+	log.Info().Msg("Starting raw NFL players fetch")
+	
+	err := s.rawFetcher.FetchNFLPlayers(c.Context())
+	if err != nil {
+		log.Error().Err(err).Msg("Raw players fetch failed")
+		return fiber.NewError(fiber.StatusInternalServerError, "Players fetch failed: " + err.Error())
+	}
+	
+	return c.JSON(fiber.Map{
+		"success":   true,
+		"message":   "NFL players data fetched successfully",
+		"duration":  time.Since(start).String(),
+		"timestamp": time.Now(),
+	})
+}
+
+// handleFetchNFLState fetches the current NFL state
+func (s *Server) handleFetchNFLState(c *fiber.Ctx) error {
+	start := time.Now()
+	
+	log.Info().Msg("Starting NFL state fetch")
+	
+	err := s.rawFetcher.FetchNFLState(c.Context())
+	if err != nil {
+		log.Error().Err(err).Msg("NFL state fetch failed")
+		return fiber.NewError(fiber.StatusInternalServerError, "NFL state fetch failed: " + err.Error())
+	}
+	
+	return c.JSON(fiber.Map{
+		"success":   true,
+		"message":   "NFL state fetched successfully",
+		"duration":  time.Since(start).String(),
+		"timestamp": time.Now(),
+	})
+}
+
+// ETL Processing handlers
+
+// handleProcessETL triggers ETL processing of raw data
+func (s *Server) handleProcessETL(c *fiber.Ctx) error {
+	start := time.Now()
+	
+	log.Info().Msg("Starting ETL processing")
+	
+	result, err := s.etlProcessor.ProcessUnprocessedResponses(c.Context())
+	if err != nil {
+		log.Error().Err(err).Msg("ETL processing failed")
+		return fiber.NewError(fiber.StatusInternalServerError, "ETL processing failed: " + err.Error())
+	}
+	
+	status := "completed"
+	if result.ErrorCount > 0 {
+		status = "completed_with_errors"
+	}
+	
+	return c.JSON(fiber.Map{
+		"success":         result.ErrorCount == 0,
+		"status":          status,
+		"total_processed": result.TotalProcessed,
+		"success_count":   result.SuccessCount,
+		"error_count":     result.ErrorCount,
+		"skipped_count":   result.SkippedCount,
+		"duration":        time.Since(start).String(),
+		"timestamp":       time.Now(),
+		"errors":          result.Errors,
+	})
 }

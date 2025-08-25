@@ -35,46 +35,46 @@ func (r *RosterRepository) UpsertRoster(ctx context.Context, leagueID string, ro
 	// First, upsert the roster
 	rosterQuery := `
 		INSERT INTO sleeper.rosters (
-			league_id, owner_id, roster_number, settings, metadata,
+			league_id, owner_id, roster_id, roster_number, settings, metadata,
 			starters, reserve, taxi
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8
+			$1, $2, $3, $4, $5, $6, $7, $8, $9
 		)
-		ON CONFLICT (league_id, roster_number) DO UPDATE SET
+		ON CONFLICT (league_id, roster_id) DO UPDATE SET
 			owner_id = EXCLUDED.owner_id,
+			roster_number = EXCLUDED.roster_number,
 			settings = EXCLUDED.settings,
 			metadata = EXCLUDED.metadata,
 			starters = EXCLUDED.starters,
 			reserve = EXCLUDED.reserve,
 			taxi = EXCLUDED.taxi,
 			updated_at = CURRENT_TIMESTAMP
-		RETURNING roster_id
+		RETURNING id
 	`
 
-	// Convert arrays to JSONB
-	starters, _ := json.Marshal(roster.Starters)
-	reserve, _ := json.Marshal(roster.Reserve)
-	taxi, _ := json.Marshal(roster.Taxi)
+	// Arrays can be passed directly to PostgreSQL text[] columns
+	// No need to marshal to JSON
 
-	var rosterID int
+	var dbRosterID int
 	err = tx.QueryRow(ctx, rosterQuery,
 		leagueID,
 		roster.OwnerID,
-		roster.RosterID, // This is actually roster_number from API
+		roster.RosterID,
+		roster.RosterID,  // Use RosterID as roster_number
 		roster.Settings,
 		roster.Metadata,
-		starters,
-		reserve,
-		taxi,
-	).Scan(&rosterID)
+		roster.Starters,  // Pass array directly
+		roster.Reserve,   // Pass array directly
+		roster.Taxi,      // Pass array directly
+	).Scan(&dbRosterID)
 
 	if err != nil {
 		return fmt.Errorf("failed to upsert roster: %w", err)
 	}
 
 	// Delete existing roster players
-	deleteQuery := `DELETE FROM sleeper.roster_players WHERE roster_id = $1`
-	_, err = tx.Exec(ctx, deleteQuery, rosterID)
+	deleteQuery := `DELETE FROM sleeper.roster_players WHERE league_id = $1 AND roster_id = $2`
+	_, err = tx.Exec(ctx, deleteQuery, leagueID, roster.RosterID)
 	if err != nil {
 		return fmt.Errorf("failed to delete existing roster players: %w", err)
 	}
@@ -82,24 +82,26 @@ func (r *RosterRepository) UpsertRoster(ctx context.Context, leagueID string, ro
 	// Insert new roster players
 	if len(roster.Players) > 0 {
 		insertQuery := `
-			INSERT INTO sleeper.roster_players (roster_id, player_id, status)
-			VALUES ($1, $2, $3)
+			INSERT INTO sleeper.roster_players (roster_id, league_id, player_id, is_starter)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (roster_id, league_id, player_id) DO UPDATE SET
+				is_starter = EXCLUDED.is_starter
 		`
 
 		for _, playerID := range roster.Players {
 			// Determine if player is a starter
-			status := "bench"
+			isStarter := false
 			for _, starterID := range roster.Starters {
 				if playerID == starterID {
-					status = "starter"
+					isStarter = true
 					break
 				}
 			}
 
-			_, err = tx.Exec(ctx, insertQuery, rosterID, playerID, status)
+			_, err = tx.Exec(ctx, insertQuery, roster.RosterID, leagueID, playerID, isStarter)
 			if err != nil {
 				r.logger.Warn("Failed to insert roster player",
-					zap.Int("roster_id", rosterID),
+					zap.Int("roster_id", roster.RosterID),
 					zap.String("player_id", playerID),
 					zap.Error(err),
 				)
@@ -116,10 +118,10 @@ func (r *RosterRepository) UpsertRoster(ctx context.Context, leagueID string, ro
 				UPDATE sleeper.rosters
 				SET wins = $2, losses = $3, ties = $4,
 				    points_for = $5, points_against = $6
-				WHERE roster_id = $1
+				WHERE id = $1
 			`
 			_, err = tx.Exec(ctx, updateQuery,
-				rosterID,
+				dbRosterID,
 				settings.Wins,
 				settings.Losses,
 				settings.Ties,
@@ -128,7 +130,7 @@ func (r *RosterRepository) UpsertRoster(ctx context.Context, leagueID string, ro
 			)
 			if err != nil {
 				r.logger.Warn("Failed to update roster settings",
-					zap.Int("roster_id", rosterID),
+					zap.Int("roster_id", dbRosterID),
 					zap.Error(err),
 				)
 			}
@@ -141,11 +143,11 @@ func (r *RosterRepository) UpsertRoster(ctx context.Context, leagueID string, ro
 // GetRostersByLeague retrieves all rosters for a league
 func (r *RosterRepository) GetRostersByLeague(ctx context.Context, leagueID string) ([]*api.Roster, error) {
 	query := `
-		SELECT roster_id, owner_id, roster_number, settings, metadata,
+		SELECT id, roster_id, owner_id, settings, metadata,
 		       starters, reserve, taxi
 		FROM sleeper.rosters
 		WHERE league_id = $1
-		ORDER BY roster_number
+		ORDER BY roster_id
 	`
 
 	rows, err := r.db.Query(ctx, query, leagueID)
@@ -162,8 +164,8 @@ func (r *RosterRepository) GetRostersByLeague(ctx context.Context, leagueID stri
 
 		err := rows.Scan(
 			&dbRosterID,
+			&roster.RosterID,
 			&roster.OwnerID,
-			&roster.RosterID, // This maps to roster_number
 			&roster.Settings,
 			&roster.Metadata,
 			&starters,
@@ -183,9 +185,9 @@ func (r *RosterRepository) GetRostersByLeague(ctx context.Context, leagueID stri
 		// Get players for this roster
 		playersQuery := `
 			SELECT player_id FROM sleeper.roster_players
-			WHERE roster_id = $1
+			WHERE league_id = $1 AND roster_id = $2
 		`
-		playerRows, err := r.db.Query(ctx, playersQuery, dbRosterID)
+		playerRows, err := r.db.Query(ctx, playersQuery, leagueID, roster.RosterID)
 		if err == nil {
 			defer playerRows.Close()
 			for playerRows.Next() {

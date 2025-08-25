@@ -14,6 +14,8 @@ import (
 	"github.com/mrab54/sleeper-db/sync-service/internal/api"
 	"github.com/mrab54/sleeper-db/sync-service/internal/config"
 	"github.com/mrab54/sleeper-db/sync-service/internal/database"
+	"github.com/mrab54/sleeper-db/sync-service/internal/database/repositories"
+	"github.com/mrab54/sleeper-db/sync-service/internal/etl"
 	"github.com/mrab54/sleeper-db/sync-service/internal/scheduler"
 	"github.com/mrab54/sleeper-db/sync-service/internal/sync"
 	"go.uber.org/zap"
@@ -21,18 +23,21 @@ import (
 
 // Server represents the HTTP server
 type Server struct {
-	app       *fiber.App
-	config    *config.Config
-	db        *database.DB
-	apiClient *api.SleeperClient
-	syncer    *sync.Syncer
-	scheduler *scheduler.Scheduler
-	logger    *zap.Logger
+	app          *fiber.App
+	config       *config.Config
+	db           *database.DB      // Analytics database
+	dbRaw        *database.DB      // Raw database
+	apiClient    *api.SleeperClient
+	syncer       *sync.Syncer
+	rawFetcher   *sync.RawDataFetcher
+	etlProcessor *etl.Processor
+	scheduler    *scheduler.Scheduler
+	logger       *zap.Logger
 }
 
 // New creates a new server instance
 func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
-	// Initialize database
+	// Initialize analytics database
 	dbConfig := &database.Config{
 		Host:            cfg.Database.Host,
 		Port:            cfg.Database.Port,
@@ -40,22 +45,53 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 		Password:        cfg.Database.Password,
 		Database:        cfg.Database.Database,
 		SSLMode:         cfg.Database.SSLMode,
+		Schema:          "analytics",
 		MaxConns:        int32(cfg.Database.MaxConnections),
 		MinConns:        int32(cfg.Database.MinConnections),
 		MaxConnLifetime: time.Duration(cfg.Database.MaxConnLifetime) * time.Second,
 		MaxConnIdleTime: time.Duration(cfg.Database.MaxConnIdleTime) * time.Second,
 	}
 
-	db, err := database.NewDB(context.Background(), dbConfig, logger)
+	db, err := database.NewAnalyticsDB(context.Background(), dbConfig, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, fmt.Errorf("failed to connect to analytics database: %w", err)
+	}
+
+	// Initialize raw database
+	dbRawConfig := &database.Config{
+		Host:            cfg.DatabaseRaw.Host,
+		Port:            cfg.DatabaseRaw.Port,
+		User:            cfg.DatabaseRaw.User,
+		Password:        cfg.DatabaseRaw.Password,
+		Database:        cfg.DatabaseRaw.Database,
+		SSLMode:         cfg.DatabaseRaw.SSLMode,
+		Schema:          "raw",
+		MaxConns:        int32(cfg.DatabaseRaw.MaxConnections),
+		MinConns:        int32(cfg.DatabaseRaw.MinConnections),
+		MaxConnLifetime: time.Duration(cfg.DatabaseRaw.MaxConnLifetime) * time.Second,
+		MaxConnIdleTime: time.Duration(cfg.DatabaseRaw.MaxConnIdleTime) * time.Second,
+	}
+
+	dbRaw, err := database.NewRawDB(context.Background(), dbRawConfig, logger)
+	if err != nil {
+		db.Close() // Clean up analytics DB
+		return nil, fmt.Errorf("failed to connect to raw database: %w", err)
 	}
 
 	// Initialize Sleeper API client
 	apiClient := api.NewSleeperClient(cfg.Sleeper.BaseURL, logger)
 
-	// Initialize syncer
+	// Initialize repositories
+	rawRepo := repositories.NewRawRepository(dbRaw.Pool())
+
+	// Initialize syncer for analytics database
 	syncer := sync.NewSyncer(apiClient, db, logger)
+
+	// Initialize raw data fetcher
+	rawFetcher := sync.NewRawDataFetcher(apiClient, rawRepo, logger)
+
+	// Initialize ETL processor
+	etlProcessor := etl.NewProcessor(db, dbRaw, logger)
 
 	// Initialize scheduler
 	sched := scheduler.NewScheduler(syncer, logger)
@@ -83,13 +119,16 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 	setupMiddleware(app, cfg, logger)
 
 	s := &Server{
-		app:       app,
-		config:    cfg,
-		db:        db,
-		apiClient: apiClient,
-		syncer:    syncer,
-		scheduler: sched,
-		logger:    logger,
+		app:          app,
+		config:       cfg,
+		db:           db,
+		dbRaw:        dbRaw,
+		apiClient:    apiClient,
+		syncer:       syncer,
+		rawFetcher:   rawFetcher,
+		etlProcessor: etlProcessor,
+		scheduler:    sched,
+		logger:       logger,
 	}
 
 	// Setup routes
@@ -175,6 +214,16 @@ func (s *Server) setupRoutes() {
 	sync.Post("/players", s.handleSyncPlayers)
 	sync.Post("/full", s.handleFullSync)
 
+	// Raw data fetching endpoints
+	raw := api.Group("/raw")
+	raw.Post("/fetch/league/:id", s.handleFetchRawLeague)
+	raw.Post("/fetch/players", s.handleFetchRawPlayers)
+	raw.Post("/fetch/nfl-state", s.handleFetchNFLState)
+
+	// ETL processing endpoints
+	etl := api.Group("/etl")
+	etl.Post("/process", s.handleProcessETL)
+
 	// Manual trigger endpoints (for debugging/admin)
 	if s.config.Server.Environment == "development" {
 		admin := api.Group("/admin")
@@ -225,6 +274,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	// Close database connections
 	s.db.Close()
+	s.dbRaw.Close()
 
 	// Shutdown Fiber app
 	return s.app.ShutdownWithContext(ctx)
@@ -232,7 +282,44 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 // scheduleJobs sets up recurring sync jobs
 func (s *Server) scheduleJobs() {
-	// Schedule full sync daily at 3 AM
+	// Schedule raw data fetch daily at 2 AM
+	s.scheduler.AddCronJob("daily_raw_fetch", "0 2 * * *", func() {
+		ctx := context.Background()
+		s.logger.Info("Running scheduled raw data fetch")
+		
+		// Fetch league data
+		err := s.rawFetcher.FetchAllLeagueData(ctx, s.config.Sleeper.PrimaryLeagueID)
+		if err != nil {
+			s.logger.Error("Scheduled raw fetch failed", zap.Error(err))
+		}
+		
+		// Fetch players (weekly)
+		if time.Now().Weekday() == time.Sunday {
+			err = s.rawFetcher.FetchNFLPlayers(ctx)
+			if err != nil {
+				s.logger.Error("Scheduled players fetch failed", zap.Error(err))
+			}
+		}
+	})
+
+	// Schedule ETL processing every 30 minutes
+	s.scheduler.AddCronJob("etl_processing", "*/30 * * * *", func() {
+		ctx := context.Background()
+		s.logger.Info("Running scheduled ETL processing")
+		
+		result, err := s.etlProcessor.ProcessUnprocessedResponses(ctx)
+		if err != nil {
+			s.logger.Error("Scheduled ETL processing failed", zap.Error(err))
+		} else {
+			s.logger.Info("ETL processing completed",
+				zap.Int("processed", result.TotalProcessed),
+				zap.Int("success", result.SuccessCount),
+				zap.Int("errors", result.ErrorCount),
+			)
+		}
+	})
+
+	// Schedule full sync daily at 3 AM (legacy - for direct sync)
 	s.scheduler.AddCronJob("daily_full_sync", "0 3 * * *", func() {
 		ctx := context.Background()
 		s.logger.Info("Running scheduled full sync")
@@ -246,6 +333,11 @@ func (s *Server) scheduleJobs() {
 	s.scheduler.AddIntervalJob("hourly_roster_sync", time.Hour, func() {
 		ctx := context.Background()
 		s.logger.Info("Running scheduled roster sync")
+		// First ensure league exists
+		if err := s.syncer.SyncLeague(ctx, s.config.Sleeper.PrimaryLeagueID); err != nil {
+			s.logger.Error("Failed to sync league before rosters", zap.Error(err))
+			return
+		}
 		err := s.syncer.SyncRosters(ctx, s.config.Sleeper.PrimaryLeagueID)
 		if err != nil {
 			s.logger.Error("Scheduled roster sync failed", zap.Error(err))
@@ -256,6 +348,12 @@ func (s *Server) scheduleJobs() {
 	s.scheduler.AddIntervalJob("transaction_sync", 30*time.Minute, func() {
 		ctx := context.Background()
 		s.logger.Info("Running scheduled transaction sync")
+		
+		// First ensure league exists
+		if err := s.syncer.SyncLeague(ctx, s.config.Sleeper.PrimaryLeagueID); err != nil {
+			s.logger.Error("Failed to sync league before transactions", zap.Error(err))
+			return
+		}
 		
 		// Get current NFL week
 		nflState, err := s.syncer.GetNFLState(ctx)

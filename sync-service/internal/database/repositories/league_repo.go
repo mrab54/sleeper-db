@@ -27,34 +27,39 @@ func NewLeagueRepository(db *database.DB, logger *zap.Logger) *LeagueRepository 
 
 // UpsertLeague inserts or updates a league
 func (r *LeagueRepository) UpsertLeague(ctx context.Context, league *api.League) error {
-	query := `
+	// Start transaction
+	tx, err := r.db.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Insert/update main league record
+	leagueQuery := `
 		INSERT INTO sleeper.leagues (
 			league_id, name, season, status, sport, total_rosters,
-			settings, scoring_settings, roster_positions, metadata,
-			previous_league_id, draft_id
+			metadata, previous_league_id, draft_id
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+			$1, $2, $3, $4, $5, $6, $7, $8, $9
 		)
 		ON CONFLICT (league_id) DO UPDATE SET
 			name = EXCLUDED.name,
 			status = EXCLUDED.status,
-			settings = EXCLUDED.settings,
-			scoring_settings = EXCLUDED.scoring_settings,
-			roster_positions = EXCLUDED.roster_positions,
 			metadata = EXCLUDED.metadata,
 			updated_at = CURRENT_TIMESTAMP
 	`
 
-	// Convert roster_positions to JSONB
-	rosterPositions, err := json.Marshal(league.RosterPositions)
-	if err != nil {
-		return fmt.Errorf("failed to marshal roster positions: %w", err)
-	}
-
-	// Handle empty previous_league_id
+	// Handle empty previous_league_id or self-reference
 	var previousLeagueID interface{} = nil
-	if league.PreviousLeagueID != "" {
-		previousLeagueID = league.PreviousLeagueID
+	if league.PreviousLeagueID != "" && league.PreviousLeagueID != league.LeagueID {
+		// Check if the previous league exists
+		var exists bool
+		checkQuery := `SELECT EXISTS(SELECT 1 FROM sleeper.leagues WHERE league_id = $1)`
+		err := tx.QueryRow(ctx, checkQuery, league.PreviousLeagueID).Scan(&exists)
+		if err == nil && exists {
+			previousLeagueID = league.PreviousLeagueID
+		}
+		// If it doesn't exist, leave as NULL
 	}
 
 	// Handle empty draft_id
@@ -63,16 +68,13 @@ func (r *LeagueRepository) UpsertLeague(ctx context.Context, league *api.League)
 		draftID = league.DraftID
 	}
 
-	_, err = r.db.Exec(ctx, query,
+	_, err = tx.Exec(ctx, leagueQuery,
 		league.LeagueID,
 		league.Name,
-		league.Season,  // Keep as string - matches table schema
+		league.Season,
 		league.Status,
 		league.Sport,
 		league.TotalRosters,
-		league.Settings,
-		league.ScoringSettings,
-		rosterPositions,
 		league.Metadata,
 		previousLeagueID,
 		draftID,
@@ -84,6 +86,41 @@ func (r *LeagueRepository) UpsertLeague(ctx context.Context, league *api.League)
 			zap.Error(err),
 		)
 		return fmt.Errorf("failed to upsert league: %w", err)
+	}
+
+	// Insert/update league settings if provided
+	if league.Settings != nil {
+		settingsQuery := `
+			INSERT INTO sleeper.league_settings (league_id, settings_json)
+			VALUES ($1, $2)
+			ON CONFLICT (league_id) DO UPDATE SET
+				settings_json = EXCLUDED.settings_json,
+				updated_at = CURRENT_TIMESTAMP
+		`
+		_, err = tx.Exec(ctx, settingsQuery, league.LeagueID, league.Settings)
+		if err != nil {
+			return fmt.Errorf("failed to upsert league settings: %w", err)
+		}
+	}
+
+	// Insert/update scoring settings if provided
+	if league.ScoringSettings != nil {
+		scoringQuery := `
+			INSERT INTO sleeper.league_scoring_settings (league_id, scoring_json)
+			VALUES ($1, $2)
+			ON CONFLICT (league_id) DO UPDATE SET
+				scoring_json = EXCLUDED.scoring_json,
+				updated_at = CURRENT_TIMESTAMP
+		`
+		_, err = tx.Exec(ctx, scoringQuery, league.LeagueID, league.ScoringSettings)
+		if err != nil {
+			return fmt.Errorf("failed to upsert scoring settings: %w", err)
+		}
+	}
+
+	// Commit transaction
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	r.logger.Info("League upserted successfully",
