@@ -49,25 +49,30 @@ make db-init  # Create schema
 ## Architecture
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Sleeper API    │────▶│  Sync Service   │────▶│   PostgreSQL    │
-└─────────────────┘     │      (Go)       │     └─────────────────┘
+┌─────────────────┐     ┌─────────────────┐     ┌──────────────────────┐
+│  Sleeper API    │────▶│  Sync Service   │────▶│   PostgreSQL (Raw)   │
+└─────────────────┘     │      (Go)       │     └──────────────────────┘
                         └─────────────────┘              │
-                                 │                        ▼
-                        ┌─────────────────┐     ┌─────────────────┐
-                        │     Redis       │     │     Hasura      │
-                        │    (Cache)      │     │   (GraphQL)     │
-                        └─────────────────┘     └─────────────────┘
+                                 │                        ▼ ETL
+                                 │               ┌──────────────────────┐
+                                 └──────────────▶│ PostgreSQL (Analytics)│
+                                                 └──────────────────────┘
+                                                          │
+                                                          ▼
+                                                 ┌─────────────────┐
+                                                 │     Hasura      │
+                                                 │   (GraphQL)     │
+                                                 └─────────────────┘
 ```
 
 ## Services
 
 | Service | Port | Description |
 |---------|------|-------------|
-| PostgreSQL | 5432 | Main database |
-| Redis | 6379 | Caching layer |
+| PostgreSQL (Analytics) | 5433 | Normalized database |
+| PostgreSQL (Raw) | 5434 | Raw API responses |
 | Hasura | 8080 | GraphQL API |
-| Sync Service | 8000 | Data synchronization |
+| Sync Service | 8001 | Data synchronization |
 | Prometheus | 9090 | Metrics collection |
 | Grafana | 3000 | Dashboards |
 

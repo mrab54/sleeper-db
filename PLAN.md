@@ -369,7 +369,7 @@ Build a production-ready, scalable system that maintains a normalized PostgreSQL
   - Implement rate limiting with golang.org/x/time/rate
   - Add request retry logic with exponential backoff
   - Connection pooling with net/http Transport
-  - Response caching with Redis
+  - Hash-based change detection for caching
   - Comprehensive error handling with custom error types
 
 - [ ] **SYNC-003**: Create Go structs for API responses

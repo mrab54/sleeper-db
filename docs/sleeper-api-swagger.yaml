@@ -1,0 +1,1048 @@
+openapi: 3.0.3
+info:
+  title: Sleeper Fantasy Sports API
+  description: |
+    The Sleeper API provides read-only access to fantasy sports data, currently supporting NFL.
+    
+    ## Authentication
+    No API token is required. The API is completely open and read-only.
+    
+    ## Rate Limiting
+    Please stay under 1000 API calls per minute to avoid rate limiting.
+    
+    ## Base URL
+    All endpoints use the base URL: `https://api.sleeper.app/v1/`
+  version: "1.0"
+  contact:
+    name: Sleeper Support
+    url: https://docs.sleeper.com
+servers:
+  - url: https://api.sleeper.app/v1
+    description: Production API server
+
+tags:
+  - name: Users
+    description: User account operations
+  - name: Leagues
+    description: League management and data
+  - name: Drafts
+    description: Draft information and picks
+  - name: Players
+    description: Player data and trending information
+  - name: State
+    description: Current sport state information
+
+paths:
+  /user/{username_or_user_id}:
+    get:
+      tags:
+        - Users
+      summary: Get user information
+      description: Retrieve a user object by username or user_id
+      parameters:
+        - name: username_or_user_id
+          in: path
+          required: true
+          description: Username or user_id of the user
+          schema:
+            type: string
+            example: "JohnDoe123"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+  /user/{user_id}/leagues/{sport}/{season}:
+    get:
+      tags:
+        - Users
+      summary: Get user's leagues
+      description: Get all leagues for a user in a specific sport and season
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+        - name: sport
+          in: path
+          required: true
+          description: Sport type (currently only 'nfl' supported)
+          schema:
+            type: string
+            enum: [nfl]
+        - name: season
+          in: path
+          required: true
+          description: Season year
+          schema:
+            type: string
+            example: "2024"
+      responses:
+        '200':
+          description: Array of leagues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/League'
+
+  /league/{league_id}:
+    get:
+      tags:
+        - Leagues
+      summary: Get league details
+      description: Retrieve detailed information about a specific league
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          description: League ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: League details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/League'
+
+  /league/{league_id}/rosters:
+    get:
+      tags:
+        - Leagues
+      summary: Get league rosters
+      description: Retrieve all rosters in a league
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          description: League ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of rosters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Roster'
+
+  /league/{league_id}/users:
+    get:
+      tags:
+        - Leagues
+      summary: Get league users
+      description: Retrieve all users in a league
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          description: League ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /league/{league_id}/matchups/{week}:
+    get:
+      tags:
+        - Leagues
+      summary: Get league matchups
+      description: Retrieve matchups for a specific week
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          description: League ID
+          schema:
+            type: string
+        - name: week
+          in: path
+          required: true
+          description: Week number (1-18 for regular season + playoffs)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 18
+      responses:
+        '200':
+          description: Array of matchups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Matchup'
+
+  /league/{league_id}/winners_bracket:
+    get:
+      tags:
+        - Leagues
+      summary: Get playoff winners bracket
+      description: Retrieve the winners bracket for playoffs
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          description: League ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Winners bracket information
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlayoffMatchup'
+
+  /league/{league_id}/losers_bracket:
+    get:
+      tags:
+        - Leagues
+      summary: Get playoff losers bracket
+      description: Retrieve the losers bracket for playoffs
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          description: League ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Losers bracket information
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlayoffMatchup'
+
+  /league/{league_id}/transactions/{round}:
+    get:
+      tags:
+        - Leagues
+      summary: Get league transactions
+      description: Retrieve transactions for a specific round/week
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          description: League ID
+          schema:
+            type: string
+        - name: round
+          in: path
+          required: true
+          description: Round/week number
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Array of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+
+  /league/{league_id}/traded_picks:
+    get:
+      tags:
+        - Leagues
+      summary: Get traded draft picks
+      description: Retrieve all traded draft picks in the league
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          description: League ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of traded picks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TradedPick'
+
+  /user/{user_id}/drafts/{sport}/{season}:
+    get:
+      tags:
+        - Drafts
+      summary: Get user's drafts
+      description: Retrieve all drafts for a user in a specific sport and season
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+        - name: sport
+          in: path
+          required: true
+          description: Sport type
+          schema:
+            type: string
+            enum: [nfl]
+        - name: season
+          in: path
+          required: true
+          description: Season year
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of drafts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Draft'
+
+  /league/{league_id}/drafts:
+    get:
+      tags:
+        - Drafts
+      summary: Get league drafts
+      description: Retrieve all drafts for a league
+      parameters:
+        - name: league_id
+          in: path
+          required: true
+          description: League ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of drafts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Draft'
+
+  /draft/{draft_id}:
+    get:
+      tags:
+        - Drafts
+      summary: Get draft details
+      description: Retrieve detailed information about a specific draft
+      parameters:
+        - name: draft_id
+          in: path
+          required: true
+          description: Draft ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Draft details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+
+  /draft/{draft_id}/picks:
+    get:
+      tags:
+        - Drafts
+      summary: Get draft picks
+      description: Retrieve all picks from a draft
+      parameters:
+        - name: draft_id
+          in: path
+          required: true
+          description: Draft ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of draft picks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DraftPick'
+
+  /draft/{draft_id}/traded_picks:
+    get:
+      tags:
+        - Drafts
+      summary: Get traded draft picks
+      description: Retrieve traded picks for a draft
+      parameters:
+        - name: draft_id
+          in: path
+          required: true
+          description: Draft ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of traded picks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TradedPick'
+
+  /players/{sport}:
+    get:
+      tags:
+        - Players
+      summary: Get all players
+      description: Retrieve all players for a sport (large response, should be cached)
+      parameters:
+        - name: sport
+          in: path
+          required: true
+          description: Sport type
+          schema:
+            type: string
+            enum: [nfl]
+      responses:
+        '200':
+          description: Object containing all players keyed by player_id
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/Player'
+
+  /players/{sport}/trending/{type}:
+    get:
+      tags:
+        - Players
+      summary: Get trending players
+      description: Retrieve trending players based on adds/drops
+      parameters:
+        - name: sport
+          in: path
+          required: true
+          description: Sport type
+          schema:
+            type: string
+            enum: [nfl]
+        - name: type
+          in: path
+          required: true
+          description: Trending type
+          schema:
+            type: string
+            enum: [add, drop]
+      responses:
+        '200':
+          description: Array of trending players
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    player_id:
+                      type: string
+                    count:
+                      type: integer
+                      description: Number of adds/drops
+
+  /state/{sport}:
+    get:
+      tags:
+        - State
+      summary: Get current sport state
+      description: Retrieve the current state of the sport including week and season
+      parameters:
+        - name: sport
+          in: path
+          required: true
+          description: Sport type
+          schema:
+            type: string
+            enum: [nfl]
+      responses:
+        '200':
+          description: Current sport state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SportState'
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+          description: Unique user identifier
+        username:
+          type: string
+          description: User's username
+        display_name:
+          type: string
+          description: User's display name
+        avatar:
+          type: string
+          description: Avatar ID or URL
+        metadata:
+          type: object
+          description: Additional user metadata
+        settings:
+          type: object
+          nullable: true
+          description: User settings
+
+    League:
+      type: object
+      properties:
+        league_id:
+          type: string
+          description: Unique league identifier
+        name:
+          type: string
+          description: League name
+        avatar:
+          type: string
+          nullable: true
+          description: League avatar
+        sport:
+          type: string
+          description: Sport type (e.g., nfl)
+        season:
+          type: string
+          description: Season year
+        status:
+          type: string
+          enum: [pre_draft, drafting, in_season, complete]
+          description: League status
+        season_type:
+          type: string
+          description: Season type (regular, playoff, etc.)
+        settings:
+          type: object
+          description: League settings including scoring, roster positions, etc.
+        scoring_settings:
+          type: object
+          description: Detailed scoring settings
+        roster_positions:
+          type: array
+          items:
+            type: string
+          description: Available roster positions
+        total_rosters:
+          type: integer
+          description: Number of teams in league
+        draft_id:
+          type: string
+          nullable: true
+          description: Associated draft ID
+        previous_league_id:
+          type: string
+          nullable: true
+          description: Previous season's league ID
+        bracket_id:
+          type: string
+          nullable: true
+          description: Playoff bracket ID
+        loser_bracket_id:
+          type: string
+          nullable: true
+          description: Loser bracket ID
+        metadata:
+          type: object
+          description: Additional league metadata
+
+    Roster:
+      type: object
+      properties:
+        roster_id:
+          type: integer
+          description: Roster identifier within the league
+        owner_id:
+          type: string
+          description: User ID of the roster owner
+        co_owners:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: Co-owner user IDs
+        players:
+          type: array
+          items:
+            type: string
+          description: Array of player IDs on roster
+        starters:
+          type: array
+          items:
+            type: string
+          description: Array of starting player IDs
+        reserve:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: Reserve/IR player IDs
+        taxi:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: Taxi squad player IDs
+        metadata:
+          type: object
+          description: Roster metadata (team name, etc.)
+        settings:
+          type: object
+          description: Roster-specific settings
+          properties:
+            wins:
+              type: integer
+            losses:
+              type: integer
+            ties:
+              type: integer
+            total_moves:
+              type: integer
+            waiver_position:
+              type: integer
+            waiver_budget_used:
+              type: integer
+            fpts:
+              type: number
+              description: Total fantasy points
+            fpts_against:
+              type: number
+              description: Total fantasy points against
+
+    Matchup:
+      type: object
+      properties:
+        roster_id:
+          type: integer
+          description: Roster ID in the matchup
+        matchup_id:
+          type: integer
+          description: Matchup identifier for pairing opponents
+        points:
+          type: number
+          description: Total points scored
+        custom_points:
+          type: number
+          nullable: true
+          description: Custom scoring points
+        players:
+          type: array
+          items:
+            type: string
+          description: Player IDs used in matchup
+        starters:
+          type: array
+          items:
+            type: string
+          description: Starting player IDs
+        players_points:
+          type: object
+          additionalProperties:
+            type: number
+          description: Points for each player (keyed by player_id)
+        starters_points:
+          type: array
+          items:
+            type: number
+          description: Points for each starter position
+
+    PlayoffMatchup:
+      type: object
+      properties:
+        r:
+          type: integer
+          description: Round number
+        m:
+          type: integer
+          description: Matchup number
+        t1:
+          type: integer
+          nullable: true
+          description: Team 1 roster ID
+        t2:
+          type: integer
+          nullable: true
+          description: Team 2 roster ID
+        w:
+          type: integer
+          nullable: true
+          description: Winner roster ID
+        l:
+          type: integer
+          nullable: true
+          description: Loser roster ID
+        t1_from:
+          type: object
+          nullable: true
+          description: Where team 1 came from
+        t2_from:
+          type: object
+          nullable: true
+          description: Where team 2 came from
+
+    Transaction:
+      type: object
+      properties:
+        transaction_id:
+          type: string
+          description: Unique transaction identifier
+        type:
+          type: string
+          enum: [trade, waiver, free_agent]
+          description: Transaction type
+        status:
+          type: string
+          enum: [complete, pending, failed]
+          description: Transaction status
+        roster_ids:
+          type: array
+          items:
+            type: integer
+          description: Rosters involved in transaction
+        adds:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Players added (player_id -> roster_id)
+        drops:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Players dropped (player_id -> roster_id)
+        draft_picks:
+          type: array
+          items:
+            type: object
+          description: Draft picks involved
+        waiver_budget:
+          type: array
+          items:
+            type: object
+          description: Waiver budget amounts
+        consenter_ids:
+          type: array
+          items:
+            type: integer
+          description: Rosters that need to consent
+        creator:
+          type: string
+          description: User ID who created the transaction
+        created:
+          type: integer
+          format: int64
+          description: Unix timestamp of creation
+        leg:
+          type: integer
+          description: Week/leg of transaction
+        metadata:
+          type: object
+          description: Additional transaction metadata
+        settings:
+          type: object
+          description: Transaction settings
+
+    TradedPick:
+      type: object
+      properties:
+        season:
+          type: string
+          description: Season year
+        round:
+          theory: integer
+          description: Draft round
+        owner_id:
+          type: integer
+          description: Current owner roster ID
+        previous_owner_id:
+          type: integer
+          description: Previous owner roster ID
+        roster_id:
+          type: integer
+          description: Original roster ID
+
+    Draft:
+      type: object
+      properties:
+        draft_id:
+          type: string
+          description: Unique draft identifier
+        league_id:
+          type: string
+          description: Associated league ID
+        type:
+          type: string
+          enum: [snake, linear, auction]
+          description: Draft type
+        status:
+          type: string
+          enum: [pre_draft, drafting, paused, complete]
+          description: Draft status
+        sport:
+          type: string
+          description: Sport type
+        season:
+          type: string
+          description: Season year
+        season_type:
+          type: string
+          description: Season type (redraft, keeper, dynasty)
+        settings:
+          type: object
+          description: Draft settings
+          properties:
+            rounds:
+              type: integer
+            teams:
+              type: integer
+            slots_wr:
+              type: integer
+            slots_rb:
+              type: integer
+            slots_qb:
+              type: integer
+            slots_te:
+              type: integer
+            slots_flex:
+              type: integer
+            slots_super_flex:
+              type: integer
+            slots_bn:
+              type: integer
+            pick_timer:
+              type: integer
+        start_time:
+          type: integer
+          format: int64
+          nullable: true
+          description: Unix timestamp of draft start
+        slot_to_roster_id:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Maps draft slots to roster IDs
+        metadata:
+          type: object
+          description: Additional draft metadata
+
+    DraftPick:
+      type: object
+      properties:
+        round:
+          type: integer
+          description: Draft round
+        roster_id:
+          type: integer
+          description: Roster that made the pick
+        player_id:
+          type: string
+          description: Player ID selected
+        picked_by:
+          type: string
+          description: User ID who made the pick
+        pick_no:
+          type: integer
+          description: Overall pick number
+        metadata:
+          type: object
+          description: Pick metadata
+          properties:
+            amount:
+              type: string
+              description: Auction amount (for auction drafts)
+            is_keeper:
+              type: boolean
+              description: Whether this was a keeper pick
+
+    Player:
+      type: object
+      properties:
+        player_id:
+          type: string
+          description: Unique player identifier
+        first_name:
+          type: string
+          description: Player's first name
+        last_name:
+          type: string
+          description: Player's last name
+        full_name:
+          type: string
+          description: Player's full name
+        search_full_name:
+          type: string
+          description: Searchable version of name
+        search_rank:
+          type: integer
+          description: Search ranking
+        position:
+          type: string
+          description: Player position (QB, RB, WR, TE, etc.)
+        team:
+          type: string
+          nullable: true
+          description: NFL team abbreviation
+        status:
+          type: string
+          description: Player status (Active, Injured Reserve, etc.)
+        injury_status:
+          type: string
+          nullable: true
+          description: Injury designation (Questionable, Out, etc.)
+        injury_body_part:
+          type: string
+          nullable: true
+          description: Injured body part
+        injury_notes:
+          type: string
+          nullable: true
+          description: Injury notes
+        active:
+          type: boolean
+          description: Whether player is on active roster
+        depth_chart_order:
+          type: integer
+          nullable: true
+          description: Depth chart position
+        depth_chart_position:
+          type: string
+          nullable: true
+          description: Position on depth chart
+        years_exp:
+          type: integer
+          description: Years of experience
+        age:
+          type: integer
+          nullable: true
+          description: Player age
+        birth_date:
+          type: string
+          nullable: true
+          description: Birth date
+        college:
+          type: string
+          nullable: true
+          description: College attended
+        height:
+          type: string
+          nullable: true
+          description: Player height
+        weight:
+          type: string
+          nullable: true
+          description: Player weight
+        number:
+          type: integer
+          nullable: true
+          description: Jersey number
+        fantasy_positions:
+          type: array
+          items:
+            type: string
+          description: Fantasy-relevant positions
+        sport:
+          type: string
+          description: Sport type
+        metadata:
+          type: object
+          description: Additional player metadata
+        hashtag:
+          type: string
+          nullable: true
+          description: Player hashtag
+        sportradar_id:
+          type: string
+          nullable: true
+          description: SportRadar ID
+        rotoworld_id:
+          type: string
+          nullable: true
+          description: Rotoworld ID
+        espn_id:
+          type: string
+          nullable: true
+          description: ESPN ID
+        yahoo_id:
+          type: string
+          nullable: true
+          description: Yahoo ID
+        stats_id:
+          type: string
+          nullable: true
+          description: Stats ID
+        fantasy_data_id:
+          type: integer
+          nullable: true
+          description: FantasyData ID
+        gsis_id:
+          type: string
+          nullable: true
+          description: GSIS ID
+
+    SportState:
+      type: object
+      properties:
+        week:
+          type: integer
+          description: Current week number
+        season_type:
+          type: string
+          description: Season type (regular, post, etc.)
+        season:
+          type: string
+          description: Current season year
+        display_week:
+          type: integer
+          description: Display week number
+        leg:
+          type: integer
+          description: Current leg
+        league_season:
+          type: string
+          description: League season
+        league_create_season:
+          type: string
+          description: Season for creating new leagues
+        previous_season:
+          type: string
+          description: Previous season year
+        season_start_date:
+          type: string
+          description: Season start date

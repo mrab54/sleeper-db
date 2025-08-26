@@ -1,237 +1,49 @@
-networks:
-  sleeper-net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.25.0.0/16
-
-volumes:
-  config_data:
-    driver: local
-  postgres_data:
-    driver: local
-  postgres_raw_data:
-    driver: local
-  prometheus_data:
-    driver: local
-  grafana_data:
-    driver: local
+version: '3.8'
 
 services:
-  # PostgreSQL Database - Analytics (Normalized)
   postgres:
     image: postgres:17-alpine
     container_name: sleeper-postgres
     restart: unless-stopped
-    networks:
-      - sleeper-net
-    ports:
-      - "127.0.0.1:5433:5432"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-sleeper_db}
       POSTGRES_USER: ${POSTGRES_USER:-sleeper_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+      POSTGRES_DB: ${POSTGRES_DB:-sleeper_db}
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/analytics:/docker-entrypoint-initdb.d:ro
+      - ./database/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sleeper_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sleeper_user} -d ${POSTGRES_DB:-sleeper_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-
-  # PostgreSQL Database - Raw API Data
-  postgres-raw:
-    image: postgres:17-alpine
-    container_name: sleeper-postgres-raw
-    restart: unless-stopped
     networks:
       - sleeper-net
-    ports:
-      - "127.0.0.1:5434:5432"
-    environment:
-      POSTGRES_DB: ${POSTGRES_RAW_DB:-sleeper_raw}
-      POSTGRES_USER: ${POSTGRES_USER:-sleeper_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
-    volumes:
-      - postgres_raw_data:/var/lib/postgresql/data
-      - ./database/raw:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sleeper_user}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
-  # Hasura GraphQL Engine
   hasura:
     image: hasura/graphql-engine:v2.36.0
     container_name: sleeper-hasura
     restart: unless-stopped
-    networks:
-      - sleeper-net
-    ports:
-      - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
+    ports:
+      - "8080:8080"
     environment:
-      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER:-sleeper_user}:${POSTGRES_PASSWORD:-sleeper_password}@postgres:5432/${POSTGRES_DB:-sleeper_db}?options=-csearch_path%3Danalytics
-      HASURA_GRAPHQL_ENABLE_CONSOLE: ${HASURA_ENABLE_CONSOLE:-true}
-      # Instead of dev mode, explicitly control what we want:
-      HASURA_GRAPHQL_ENABLE_ALLOWLIST: ${HASURA_ENABLE_ALLOWLIST:-false}
-      HASURA_GRAPHQL_ENABLED_LOG_TYPES: ${HASURA_LOG_TYPES:-startup,http-log,query-log}
-      HASURA_GRAPHQL_LOG_LEVEL: ${HASURA_LOG_LEVEL:-info}
-      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-changeme_admin_secret_here}
+      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER:-sleeper_user}:${POSTGRES_PASSWORD:-sleeper_password}@postgres:5432/${POSTGRES_DB:-sleeper_db}
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-changeme}
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
       HASURA_GRAPHQL_ENABLE_TELEMETRY: "false"
-      HASURA_GRAPHQL_EVENTS_FETCH_BATCH_SIZE: 100
-      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://${POSTGRES_USER:-sleeper_user}:${POSTGRES_PASSWORD:-sleeper_password}@postgres:5432/${POSTGRES_DB:-sleeper_db}?options=-csearch_path%3Danalytics
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-
-  # Go Sync Service
-  sync-service:
-    build:
-      context: ./sync-service
-      dockerfile: Dockerfile
-      target: production
-    image: sleeper-sync:latest
-    container_name: sleeper-sync
-    restart: unless-stopped
     networks:
       - sleeper-net
-    ports:
-      - "127.0.0.1:8001:8000"
-    volumes:
-      - config_data:/app/config
-    depends_on:
-      postgres:
-        condition: service_healthy
-      postgres-raw:
-        condition: service_healthy
-    environment:
-      # Server
-      SERVER_PORT: 8000
-      SERVER_HOST: 0.0.0.0
-      SERVER_ENVIRONMENT: ${ENVIRONMENT:-development}
-      SERVER_LOG_LEVEL: ${LOG_LEVEL:-info}
-      
-      # Analytics Database (Normalized)
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_USER: ${POSTGRES_USER:-sleeper_user}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
-      DATABASE_NAME: ${POSTGRES_DB:-sleeper_db}
-      DATABASE_SSL_MODE: disable
-      
-      # Raw Database (API Responses)
-      DATABASE_RAW_HOST: postgres-raw
-      DATABASE_RAW_PORT: 5432
-      DATABASE_RAW_USER: ${POSTGRES_USER:-sleeper_user}
-      DATABASE_RAW_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
-      DATABASE_RAW_NAME: ${POSTGRES_RAW_DB:-sleeper_raw}
-      DATABASE_RAW_SSL_MODE: disable
-      
-      # Sleeper API
-      SLEEPER_BASE_URL: ${SLEEPER_API_BASE_URL:-https://api.sleeper.app/v1}
-      SLEEPER_PRIMARY_LEAGUE_ID: ${PRIMARY_LEAGUE_ID:-1199102384316362752}
-      
-      # Hasura
-      HASURA_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-changeme_admin_secret_here}
-      HASURA_ENDPOINT: http://hasura:8080
-      
-      # Go specific
-      GOMAXPROCS: 2
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 4G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
-  # Prometheus Metrics
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: sleeper-prometheus
-    restart: unless-stopped
-    networks:
-      - sleeper-net
-    ports:
-      - "127.0.0.1:9090:9090"
-    volumes:
-      - ./monitoring/prometheus:/etc/prometheus:ro
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=30d'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-    depends_on:
-      - sync-service
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
+networks:
+  sleeper-net:
+    driver: bridge
 
-  # Grafana Dashboards
-  grafana:
-    image: grafana/grafana:latest
-    container_name: sleeper-grafana
-    restart: unless-stopped
-    networks:
-      - sleeper-net
-    ports:
-      - "127.0.0.1:3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on:
-      - prometheus
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
+volumes:
+  postgres_data:
