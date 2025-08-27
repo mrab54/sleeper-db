@@ -509,20 +509,108 @@ components:
           description: Unique user identifier
         username:
           type: string
+          nullable: true
           description: User's username
         display_name:
           type: string
           description: User's display name
         avatar:
           type: string
+          nullable: true
           description: Avatar ID or URL
+        is_bot:
+          type: boolean
+          description: Whether user is a bot
+        is_owner:
+          type: boolean
+          description: Whether user is league owner (in league context)
+        league_id:
+          type: string
+          description: League ID (when returned from league endpoints)
         metadata:
           type: object
+          nullable: true
           description: Additional user metadata
+          properties:
+            team_name:
+              type: string
+              description: User's team name in the league
+            avatar:
+              type: string
+              description: Custom avatar URL
+            allow_pn:
+              type: string
+              description: Push notification preference
+            allow_sms:
+              type: string
+              description: SMS notification preference
+            mention_pn:
+              type: string
+              description: Mention notification preference
         settings:
           type: object
           nullable: true
           description: User settings
+        email:
+          type: string
+          nullable: true
+          description: User email
+        phone:
+          type: string
+          nullable: true
+          description: User phone
+        real_name:
+          type: string
+          nullable: true
+          description: User's real name
+        created:
+          type: string
+          nullable: true
+          description: Account creation timestamp
+        verification:
+          type: string
+          nullable: true
+          description: Verification status
+        cookies:
+          type: string
+          nullable: true
+          description: User cookies
+        currencies:
+          type: object
+          nullable: true
+          description: User currencies
+        data_updated:
+          type: string
+          nullable: true
+          description: When user data was last updated
+        deleted:
+          type: string
+          nullable: true
+          description: Deletion timestamp if applicable
+        notifications:
+          type: object
+          nullable: true
+          description: User notification settings
+        pending:
+          type: string
+          nullable: true
+          description: Pending status
+        solicitable:
+          type: string
+          nullable: true
+          description: Whether user can be solicited
+        summoner_name:
+          type: string
+          nullable: true
+          description: Summoner name for gaming
+        summoner_region:
+          type: string
+          nullable: true
+          description: Summoner region
+        token:
+          type: string
+          nullable: true
+          description: User token
 
     League:
       type: object
@@ -560,7 +648,7 @@ components:
           type: array
           items:
             type: string
-          description: Available roster positions
+          description: Available roster positions (QB, RB, WR, TE, FLEX, BN, etc.)
         total_rosters:
           type: integer
           description: Number of teams in league
@@ -580,9 +668,77 @@ components:
           type: string
           nullable: true
           description: Loser bracket ID
+        bracket_overrides_id:
+          type: string
+          nullable: true
+          description: Bracket overrides ID
+        loser_bracket_overrides_id:
+          type: string
+          nullable: true
+          description: Loser bracket overrides ID
+        group_id:
+          type: string
+          nullable: true
+          description: Group ID for league
         metadata:
           type: object
+          nullable: true
           description: Additional league metadata
+        company_id:
+          type: string
+          nullable: true
+          description: Company ID
+        shard:
+          type: integer
+          description: Database shard number
+        last_message_id:
+          type: string
+          nullable: true
+          description: ID of last message in league chat
+        last_message_time:
+          type: integer
+          format: int64
+          nullable: true
+          description: Timestamp of last message
+        last_message_text_map:
+          type: object
+          nullable: true
+          description: Text map of last message
+        last_message_attachment:
+          type: string
+          nullable: true
+          description: Attachment of last message
+        last_author_id:
+          type: string
+          nullable: true
+          description: User ID of last message author
+        last_author_display_name:
+          type: string
+          nullable: true
+          description: Display name of last message author
+        last_author_avatar:
+          type: string
+          nullable: true
+          description: Avatar of last message author
+        last_author_is_bot:
+          type: boolean
+          description: Whether last author is a bot
+        last_pinned_message_id:
+          type: string
+          nullable: true
+          description: ID of last pinned message
+        last_read_id:
+          type: string
+          nullable: true
+          description: ID of last read message
+        display_order:
+          type: integer
+          nullable: true
+          description: Display order for the league
+        last_transaction_id:
+          type: string
+          nullable: true
+          description: ID of last transaction in league
 
     Roster:
       type: object
@@ -592,6 +748,7 @@ components:
           description: Roster identifier within the league
         owner_id:
           type: string
+          nullable: true
           description: User ID of the roster owner
         co_owners:
           type: array
@@ -599,15 +756,20 @@ components:
             type: string
           nullable: true
           description: Co-owner user IDs
+        league_id:
+          type: string
+          description: League ID this roster belongs to
         players:
           type: array
           items:
             type: string
+          nullable: true
           description: Array of player IDs on roster
         starters:
           type: array
           items:
             type: string
+          nullable: true
           description: Array of starting player IDs
         reserve:
           type: array
@@ -621,31 +783,73 @@ components:
             type: string
           nullable: true
           description: Taxi squad player IDs
+        keepers:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: Keeper player IDs
+        player_map:
+          type: object
+          nullable: true
+          description: Map of player-specific settings
         metadata:
           type: object
-          description: Roster metadata (team name, etc.)
+          nullable: true
+          description: Roster metadata (team name, notification settings, etc.)
+          properties:
+            p_nick_*:
+              type: string
+              description: Player nickname (dynamic keys like p_nick_1234)
+            allow_pn_inactive_starters:
+              type: string
+              description: Push notification for inactive starters
+            allow_pn_player_injury_status:
+              type: string
+              description: Push notification for player injuries
+            allow_pn_scoring:
+              type: string
+              description: Push notification for scoring
+            restrict_pn_scoring_starters_only:
+              type: string
+              description: Restrict scoring notifications to starters only
         settings:
           type: object
           description: Roster-specific settings
           properties:
             wins:
               type: integer
+              description: Number of wins
             losses:
               type: integer
+              description: Number of losses
             ties:
               type: integer
+              description: Number of ties
             total_moves:
               type: integer
+              description: Total roster moves made
             waiver_position:
               type: integer
+              description: Current waiver wire position
             waiver_budget_used:
               type: integer
+              description: Amount of waiver budget used
             fpts:
               type: number
               description: Total fantasy points
             fpts_against:
               type: number
+              nullable: true
               description: Total fantasy points against
+            fpts_decimal:
+              type: number
+              nullable: true
+              description: Decimal portion of fantasy points
+            fpts_against_decimal:
+              type: number
+              nullable: true
+              description: Decimal portion of fantasy points against
 
     Matchup:
       type: object
@@ -712,11 +916,11 @@ components:
         t1_from:
           type: object
           nullable: true
-          description: Where team 1 came from
+          description: Where team 1 came from (contains 'w' or 'l' and matchup)
         t2_from:
           type: object
           nullable: true
-          description: Where team 2 came from
+          description: Where team 2 came from (contains 'w' or 'l' and matchup)
 
     Transaction:
       type: object
@@ -726,7 +930,7 @@ components:
           description: Unique transaction identifier
         type:
           type: string
-          enum: [trade, waiver, free_agent]
+          enum: [trade, waiver, free_agent, commissioner]
           description: Transaction type
         status:
           type: string
@@ -739,11 +943,13 @@ components:
           description: Rosters involved in transaction
         adds:
           type: object
+          nullable: true
           additionalProperties:
             type: integer
           description: Players added (player_id -> roster_id)
         drops:
           type: object
+          nullable: true
           additionalProperties:
             type: integer
           description: Players dropped (player_id -> roster_id)
@@ -768,15 +974,21 @@ components:
         created:
           type: integer
           format: int64
-          description: Unix timestamp of creation
+          description: Unix timestamp of creation (milliseconds)
+        status_updated:
+          type: integer
+          format: int64
+          description: Unix timestamp when status was last updated (milliseconds)
         leg:
           type: integer
           description: Week/leg of transaction
         metadata:
           type: object
+          nullable: true
           description: Additional transaction metadata
         settings:
           type: object
+          nullable: true
           description: Transaction settings
 
     TradedPick:
@@ -786,7 +998,7 @@ components:
           type: string
           description: Season year
         round:
-          theory: integer
+          type: integer
           description: Draft round
         owner_id:
           type: integer
@@ -797,6 +1009,10 @@ components:
         roster_id:
           type: integer
           description: Original roster ID
+        draft_id:
+          type: integer
+          nullable: true
+          description: Draft ID (when returned from draft endpoints)
 
     Draft:
       type: object
@@ -823,31 +1039,71 @@ components:
           description: Season year
         season_type:
           type: string
-          description: Season type (redraft, keeper, dynasty)
+          description: Season type (regular, etc.)
         settings:
           type: object
           description: Draft settings
           properties:
             rounds:
               type: integer
+              description: Number of draft rounds
             teams:
               type: integer
+              description: Number of teams
             slots_wr:
               type: integer
+              description: WR roster slots
             slots_rb:
               type: integer
+              description: RB roster slots
             slots_qb:
               type: integer
+              description: QB roster slots
             slots_te:
               type: integer
+              description: TE roster slots
             slots_flex:
               type: integer
+              description: FLEX roster slots
             slots_super_flex:
               type: integer
+              description: Super FLEX roster slots
             slots_bn:
               type: integer
+              description: Bench roster slots
             pick_timer:
               type: integer
+              description: Seconds per pick
+            alpha_sort:
+              type: integer
+              description: Whether players are alpha sorted
+            autopause_enabled:
+              type: integer
+              description: Whether autopause is enabled
+            autopause_start_time:
+              type: integer
+              description: Autopause start time
+            autopause_end_time:
+              type: integer
+              description: Autopause end time
+            autostart:
+              type: integer
+              description: Whether draft autostarts
+            cpu_autopick:
+              type: integer
+              description: Whether CPU autopicks
+            enforce_position_limits:
+              type: integer
+              description: Whether position limits are enforced
+            nomination_timer:
+              type: integer
+              description: Nomination timer for auction drafts
+            player_type:
+              type: integer
+              description: Type of players in draft
+            reversal_round:
+              type: integer
+              description: Round where snake reverses
         start_time:
           type: integer
           format: int64
@@ -858,9 +1114,48 @@ components:
           additionalProperties:
             type: integer
           description: Maps draft slots to roster IDs
+        draft_order:
+          type: object
+          additionalProperties:
+            type: integer
+          nullable: true
+          description: Maps user IDs to draft slots
         metadata:
           type: object
+          nullable: true
           description: Additional draft metadata
+          properties:
+            name:
+              type: string
+              description: Draft name
+            description:
+              type: string
+              description: Draft description
+            scoring_type:
+              type: string
+              description: Scoring type for draft
+        created:
+          type: integer
+          format: int64
+          description: Unix timestamp when draft was created
+        creators:
+          type: array
+          items:
+            type: string
+          description: User IDs who created the draft
+        last_picked:
+          type: integer
+          format: int64
+          description: Unix timestamp of last pick
+        last_message_id:
+          type: string
+          nullable: true
+          description: ID of last message in draft chat
+        last_message_time:
+          type: integer
+          format: int64
+          nullable: true
+          description: Unix timestamp of last message
 
     DraftPick:
       type: object
@@ -880,16 +1175,63 @@ components:
         pick_no:
           type: integer
           description: Overall pick number
+        draft_id:
+          type: string
+          description: Draft ID this pick belongs to
+        draft_slot:
+          type: integer
+          description: Draft slot that made the pick
+        is_keeper:
+          type: boolean
+          nullable: true
+          description: Whether this was a keeper pick
+        reactions:
+          type: object
+          nullable: true
+          description: Reactions to this pick
         metadata:
           type: object
-          description: Pick metadata
+          description: Pick metadata including player details
           properties:
             amount:
               type: string
               description: Auction amount (for auction drafts)
-            is_keeper:
-              type: boolean
-              description: Whether this was a keeper pick
+            first_name:
+              type: string
+              description: Player's first name
+            last_name:
+              type: string
+              description: Player's last name
+            position:
+              type: string
+              description: Player's position
+            team:
+              type: string
+              description: Player's NFL team
+            status:
+              type: string
+              description: Player's status
+            injury_status:
+              type: string
+              description: Player's injury status
+            years_exp:
+              type: string
+              description: Years of experience
+            number:
+              type: string
+              description: Jersey number
+            sport:
+              type: string
+              description: Sport
+            team_abbr:
+              type: string
+              description: Team abbreviation
+            team_changed_at:
+              type: string
+              description: When team changed
+            news_updated:
+              type: string
+              description: When news was last updated
 
     Player:
       type: object
@@ -899,28 +1241,51 @@ components:
           description: Unique player identifier
         first_name:
           type: string
+          nullable: true
           description: Player's first name
         last_name:
           type: string
+          nullable: true
           description: Player's last name
         full_name:
           type: string
+          nullable: true
           description: Player's full name
         search_full_name:
           type: string
+          nullable: true
           description: Searchable version of name
+        search_first_name:
+          type: string
+          nullable: true
+          description: Searchable first name
+        search_last_name:
+          type: string
+          nullable: true
+          description: Searchable last name
         search_rank:
           type: integer
+          nullable: true
           description: Search ranking
         position:
           type: string
-          description: Player position (QB, RB, WR, TE, etc.)
+          nullable: true
+          description: Player position (QB, RB, WR, TE, K, DEF, etc.)
         team:
           type: string
           nullable: true
           description: NFL team abbreviation
+        team_abbr:
+          type: string
+          nullable: true
+          description: Team abbreviation (duplicate field)
+        team_changed_at:
+          type: string
+          nullable: true
+          description: When player changed teams
         status:
           type: string
+          nullable: true
           description: Player status (Active, Injured Reserve, etc.)
         injury_status:
           type: string
@@ -934,6 +1299,18 @@ components:
           type: string
           nullable: true
           description: Injury notes
+        injury_start_date:
+          type: string
+          nullable: true
+          description: When injury started
+        practice_participation:
+          type: string
+          nullable: true
+          description: Practice participation status
+        practice_description:
+          type: string
+          nullable: true
+          description: Practice participation description
         active:
           type: boolean
           description: Whether player is on active roster
@@ -947,6 +1324,7 @@ components:
           description: Position on depth chart
         years_exp:
           type: integer
+          nullable: true
           description: Years of experience
         age:
           type: integer
@@ -955,19 +1333,35 @@ components:
         birth_date:
           type: string
           nullable: true
-          description: Birth date
+          description: Birth date (YYYY-MM-DD)
+        birth_city:
+          type: string
+          nullable: true
+          description: Birth city
+        birth_state:
+          type: string
+          nullable: true
+          description: Birth state
+        birth_country:
+          type: string
+          nullable: true
+          description: Birth country
         college:
           type: string
           nullable: true
           description: College attended
+        high_school:
+          type: string
+          nullable: true
+          description: High school attended
         height:
           type: string
           nullable: true
-          description: Player height
+          description: Player height in inches
         weight:
           type: string
           nullable: true
-          description: Player weight
+          description: Player weight in pounds
         number:
           type: integer
           nullable: true
@@ -976,35 +1370,55 @@ components:
           type: array
           items:
             type: string
+          nullable: true
           description: Fantasy-relevant positions
         sport:
           type: string
-          description: Sport type
+          description: Sport type (nfl)
         metadata:
           type: object
+          nullable: true
           description: Additional player metadata
+          properties:
+            channel_id:
+              type: string
+              description: Channel ID for player updates
         hashtag:
           type: string
           nullable: true
           description: Player hashtag
+        news_updated:
+          type: string
+          nullable: true
+          description: When news was last updated
+        competitions:
+          type: array
+          items:
+            type: object
+          nullable: true
+          description: Competition data
         sportradar_id:
           type: string
           nullable: true
           description: SportRadar ID
         rotoworld_id:
-          type: string
+          type: integer
           nullable: true
           description: Rotoworld ID
+        rotowire_id:
+          type: integer
+          nullable: true
+          description: Rotowire ID
         espn_id:
-          type: string
+          type: integer
           nullable: true
           description: ESPN ID
         yahoo_id:
-          type: string
+          type: integer
           nullable: true
           description: Yahoo ID
         stats_id:
-          type: string
+          type: integer
           nullable: true
           description: Stats ID
         fantasy_data_id:
@@ -1015,6 +1429,22 @@ components:
           type: string
           nullable: true
           description: GSIS ID
+        opta_id:
+          type: string
+          nullable: true
+          description: Opta ID
+        swish_id:
+          type: string
+          nullable: true
+          description: Swish ID
+        pandascore_id:
+          type: string
+          nullable: true
+          description: Pandascore ID
+        oddsjam_id:
+          type: string
+          nullable: true
+          description: Oddsjam ID
 
     SportState:
       type: object
@@ -1046,3 +1476,6 @@ components:
         season_start_date:
           type: string
           description: Season start date
+        season_has_scores:
+          type: boolean
+          description: Whether the season has scores available
