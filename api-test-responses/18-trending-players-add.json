@@ -1,1 +1,27 @@
-[{"count":406080,"player_id":"2309"},{"count":133240,"player_id":"8129"},{"count":79020,"player_id":"10219"},{"count":73624,"player_id":"ARI"},{"count":62146,"player_id":"12495"},{"count":61304,"player_id":"11610"},{"count":55416,"player_id":"12535"},{"count":49728,"player_id":"11562"},{"count":38888,"player_id":"8168"},{"count":38178,"player_id":"12516"},{"count":37287,"player_id":"12533"},{"count":34248,"player_id":"3161"},{"count":33432,"player_id":"10213"},{"count":33383,"player_id":"8188"},{"count":29772,"player_id":"2505"},{"count":27230,"player_id":"12486"},{"count":26700,"player_id":"12469"},{"count":25794,"player_id":"11435"},{"count":21145,"player_id":"8254"},{"count":20439,"player_id":"9494"},{"count":20304,"player_id":"12641"},{"count":19845,"player_id":"19"},{"count":19170,"player_id":"1339"},{"count":18558,"player_id":"12670"},{"count":18501,"player_id":"NE"}]
+[
+  { "count": 406080, "player_id": "2309" },
+  { "count": 133240, "player_id": "8129" },
+  { "count": 79020, "player_id": "10219" },
+  { "count": 73624, "player_id": "ARI" },
+  { "count": 62146, "player_id": "12495" },
+  { "count": 61304, "player_id": "11610" },
+  { "count": 55416, "player_id": "12535" },
+  { "count": 49728, "player_id": "11562" },
+  { "count": 38888, "player_id": "8168" },
+  { "count": 38178, "player_id": "12516" },
+  { "count": 37287, "player_id": "12533" },
+  { "count": 34248, "player_id": "3161" },
+  { "count": 33432, "player_id": "10213" },
+  { "count": 33383, "player_id": "8188" },
+  { "count": 29772, "player_id": "2505" },
+  { "count": 27230, "player_id": "12486" },
+  { "count": 26700, "player_id": "12469" },
+  { "count": 25794, "player_id": "11435" },
+  { "count": 21145, "player_id": "8254" },
+  { "count": 20439, "player_id": "9494" },
+  { "count": 20304, "player_id": "12641" },
+  { "count": 19845, "player_id": "19" },
+  { "count": 19170, "player_id": "1339" },
+  { "count": 18558, "player_id": "12670" },
+  { "count": 18501, "player_id": "NE" }
+]

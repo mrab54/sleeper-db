@@ -95,3 +95,4 @@ sleeper-db/
 - Need proper testing strategy
 - Monitoring and alerting not configured
 - No backup strategy defined yet
+- There will be no python in this entire project.

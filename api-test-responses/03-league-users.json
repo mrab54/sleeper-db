@@ -1,1 +1,209 @@
-[{"avatar":"a7edf17a1956ebe79017732156625301","display_name":"rab12345","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","allow_sms":"on","avatar":"https://sleepercdn.com/uploads/ab8c5d63085ac16abee95fea9c24275c","mention_pn":"on","team_name":"Orange Peanut"},"settings":null,"user_id":"213866320939196416"},{"avatar":"5dadf4f70e824e3506646f13fc2105d4","display_name":"dorseybm","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","allow_sms":"on","mention_pn":"on"},"settings":null,"user_id":"484790555675455488"},{"avatar":"e654cdcda098398a74607b82eb0878cc","display_name":"RyanVC28","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","allow_sms":"on","mention_pn":"on","team_name":"Florida North"},"settings":null,"user_id":"819426386337984512"},{"avatar":"5cc45bfa746186eb476a703dc6a612e5","display_name":"gizmoduck5","is_bot":false,"is_owner":true,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","allow_sms":"on","avatar":"https://sleepercdn.com/uploads/4cf146e503ab7593d074f65f99cf6406","mention_pn":"on","team_name":"GizmoDuck"},"settings":null,"user_id":"831639450038665216"},{"avatar":"4f4090e5e9c3941414db40a871e3e909","display_name":"fauldsb","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","allow_sms":"on","mention_pn":"on"},"settings":null,"user_id":"873281472038146048"},{"avatar":"8eb8f8bf999945d523f2c4033f70473e","display_name":"ONESchaef","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","allow_sms":"on","avatar":"https://sleepercdn.com/uploads/1c6409d95f044767dd8edc5225320d36.jpg","mention_pn":"on","team_name":"The Demetrius Protocol"},"settings":null,"user_id":"995173024489861120"},{"avatar":"f0edbf4278f53f9425db175073df6584","display_name":"SnipsnBerries","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","allow_sms":"on","mention_pn":"on","team_name":"Hockenson Tua"},"settings":null,"user_id":"1002538112812814336"},{"avatar":"be39d5c198fe7fa4bd89984f03ae760e","display_name":"spaether6","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","avatar":"https://sleepercdn.com/uploads/639e8615c91afb9018649f304389b0e7.jpg","mention_pn":"on","team_name":"Skank Hunt"},"settings":null,"user_id":"1116038984116846592"},{"avatar":"4f4090e5e9c3941414db40a871e3e909","display_name":"Redhawk43","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","avatar":"https://sleepercdn.com/uploads/d56fc313b6372522211085f1f0aacea3.jpg","league_report_pn":"on","mascot_message":"on","mention_pn":"on","player_like_pn":"on","player_nickname_update":"off","team_name":"Joey Bag of Donuts","team_name_update":"off","trade_block_pn":"on","transaction_commissioner":"on","transaction_free_agent":"on","transaction_trade":"on","transaction_waiver":"on","user_message_pn":"on"},"settings":null,"user_id":"1116150314396147712"},{"avatar":"4f4090e5e9c3941414db40a871e3e909","display_name":"tengebos","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","allow_sms":"on","league_report_pn":"on","mascot_message":"on","mention_pn":"on","player_like_pn":"on","player_nickname_update":"on","team_name":"Runnin Bear","team_name_update":"on","trade_block_pn":"on","transaction_commissioner":"on","transaction_free_agent":"on","transaction_trade":"on","transaction_waiver":"on","user_message_pn":"on"},"settings":null,"user_id":"1122157980096626688"},{"avatar":"4f4090e5e9c3941414db40a871e3e909","display_name":"TeamFritsch","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","avatar":"https://sleepercdn.com/uploads/f1e3f2124a01a8661335a7341095b562.jpg","mention_pn":"on","team_name":"Team Fritsch"},"settings":null,"user_id":"1126345201179566080"},{"avatar":"b319fdf8b7b5b0359d3c78622ba4d70c","display_name":"Herbdawg5","is_bot":false,"is_owner":false,"league_id":"1199102384316362752","metadata":{"allow_pn":"on","allow_sms":"on","avatar":"https://sleepercdn.com/uploads/6b178f07b45278eaadf46d68defa35b5.jpg","league_report_pn":"off","mascot_message":"off","mention_pn":"on","player_like_pn":"on","player_nickname_update":"off","team_name":"Strouds Nut Butterer","team_name_update":"off","trade_block_pn":"off","transaction_commissioner":"off","transaction_free_agent":"off","transaction_trade":"on","transaction_waiver":"on","user_message_pn":"on"},"settings":null,"user_id":"1127802870893600768"}]
+[
+  {
+    "avatar": "a7edf17a1956ebe79017732156625301",
+    "display_name": "rab12345",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": {
+      "allow_pn": "on",
+      "allow_sms": "on",
+      "avatar": "https://sleepercdn.com/uploads/ab8c5d63085ac16abee95fea9c24275c",
+      "mention_pn": "on",
+      "team_name": "Orange Peanut"
+    },
+    "settings": null,
+    "user_id": "213866320939196416"
+  },
+  {
+    "avatar": "5dadf4f70e824e3506646f13fc2105d4",
+    "display_name": "dorseybm",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": { "allow_pn": "on", "allow_sms": "on", "mention_pn": "on" },
+    "settings": null,
+    "user_id": "484790555675455488"
+  },
+  {
+    "avatar": "e654cdcda098398a74607b82eb0878cc",
+    "display_name": "RyanVC28",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": {
+      "allow_pn": "on",
+      "allow_sms": "on",
+      "mention_pn": "on",
+      "team_name": "Florida North"
+    },
+    "settings": null,
+    "user_id": "819426386337984512"
+  },
+  {
+    "avatar": "5cc45bfa746186eb476a703dc6a612e5",
+    "display_name": "gizmoduck5",
+    "is_bot": false,
+    "is_owner": true,
+    "league_id": "1199102384316362752",
+    "metadata": {
+      "allow_pn": "on",
+      "allow_sms": "on",
+      "avatar": "https://sleepercdn.com/uploads/4cf146e503ab7593d074f65f99cf6406",
+      "mention_pn": "on",
+      "team_name": "GizmoDuck"
+    },
+    "settings": null,
+    "user_id": "831639450038665216"
+  },
+  {
+    "avatar": "4f4090e5e9c3941414db40a871e3e909",
+    "display_name": "fauldsb",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": { "allow_pn": "on", "allow_sms": "on", "mention_pn": "on" },
+    "settings": null,
+    "user_id": "873281472038146048"
+  },
+  {
+    "avatar": "8eb8f8bf999945d523f2c4033f70473e",
+    "display_name": "ONESchaef",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": {
+      "allow_pn": "on",
+      "allow_sms": "on",
+      "avatar": "https://sleepercdn.com/uploads/1c6409d95f044767dd8edc5225320d36.jpg",
+      "mention_pn": "on",
+      "team_name": "The Demetrius Protocol"
+    },
+    "settings": null,
+    "user_id": "995173024489861120"
+  },
+  {
+    "avatar": "f0edbf4278f53f9425db175073df6584",
+    "display_name": "SnipsnBerries",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": {
+      "allow_pn": "on",
+      "allow_sms": "on",
+      "mention_pn": "on",
+      "team_name": "Hockenson Tua"
+    },
+    "settings": null,
+    "user_id": "1002538112812814336"
+  },
+  {
+    "avatar": "be39d5c198fe7fa4bd89984f03ae760e",
+    "display_name": "spaether6",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": {
+      "allow_pn": "on",
+      "avatar": "https://sleepercdn.com/uploads/639e8615c91afb9018649f304389b0e7.jpg",
+      "mention_pn": "on",
+      "team_name": "Skank Hunt"
+    },
+    "settings": null,
+    "user_id": "1116038984116846592"
+  },
+  {
+    "avatar": "4f4090e5e9c3941414db40a871e3e909",
+    "display_name": "Redhawk43",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": {
+      "allow_pn": "on",
+      "avatar": "https://sleepercdn.com/uploads/d56fc313b6372522211085f1f0aacea3.jpg",
+      "league_report_pn": "on",
+      "mascot_message": "on",
+      "mention_pn": "on",
+      "player_like_pn": "on",
+      "player_nickname_update": "off",
+      "team_name": "Joey Bag of Donuts",
+      "team_name_update": "off",
+      "trade_block_pn": "on",
+      "transaction_commissioner": "on",
+      "transaction_free_agent": "on",
+      "transaction_trade": "on",
+      "transaction_waiver": "on",
+      "user_message_pn": "on"
+    },
+    "settings": null,
+    "user_id": "1116150314396147712"
+  },
+  {
+    "avatar": "4f4090e5e9c3941414db40a871e3e909",
+    "display_name": "tengebos",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": {
+      "allow_pn": "on",
+      "allow_sms": "on",
+      "league_report_pn": "on",
+      "mascot_message": "on",
+      "mention_pn": "on",
+      "player_like_pn": "on",
+      "player_nickname_update": "on",
+      "team_name": "Runnin Bear",
+      "team_name_update": "on",
+      "trade_block_pn": "on",
+      "transaction_commissioner": "on",
+      "transaction_free_agent": "on",
+      "transaction_trade": "on",
+      "transaction_waiver": "on",
+      "user_message_pn": "on"
+    },
+    "settings": null,
+    "user_id": "1122157980096626688"
+  },
+  {
+    "avatar": "4f4090e5e9c3941414db40a871e3e909",
+    "display_name": "TeamFritsch",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": {
+      "allow_pn": "on",
+      "avatar": "https://sleepercdn.com/uploads/f1e3f2124a01a8661335a7341095b562.jpg",
+      "mention_pn": "on",
+      "team_name": "Team Fritsch"
+    },
+    "settings": null,
+    "user_id": "1126345201179566080"
+  },
+  {
+    "avatar": "b319fdf8b7b5b0359d3c78622ba4d70c",
+    "display_name": "Herbdawg5",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "1199102384316362752",
+    "metadata": {
+      "allow_pn": "on",
+      "allow_sms": "on",
+      "avatar": "https://sleepercdn.com/uploads/6b178f07b45278eaadf46d68defa35b5.jpg",
+      "league_report_pn": "off",
+      "mascot_message": "off",
+      "mention_pn": "on",
+      "player_like_pn": "on",
+      "player_nickname_update": "off",
+      "team_name": "Strouds Nut Butterer",
+      "team_name_update": "off",
+      "trade_block_pn": "off",
+      "transaction_commissioner": "off",
+      "transaction_free_agent": "off",
+      "transaction_trade": "on",
+      "transaction_waiver": "on",
+      "user_message_pn": "on"
+    },
+    "settings": null,
+    "user_id": "1127802870893600768"
+  }
+]

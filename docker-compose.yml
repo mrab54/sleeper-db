@@ -41,6 +41,17 @@ services:
     networks:
       - sleeper-net
 
+  docs:
+    build:
+      context: ./docs
+      dockerfile: Dockerfile
+    container_name: sleeper-docs
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    networks:
+      - sleeper-net
+
 networks:
   sleeper-net:
     driver: bridge
