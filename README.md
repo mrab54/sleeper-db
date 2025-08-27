@@ -32,31 +32,25 @@ cd sleeper-db
 ```bash
 cp .env.example .env
 # Edit .env with your configuration
-# Required: Set PRIMARY_LEAGUE_ID to your Sleeper league ID
 ```
 
 3. **Start the services**
 ```bash
-make setup    # Initial setup
-make dev      # Start development environment
+make up       # Start all services
 ```
 
-4. **Initialize the database**
-```bash
-make db-init  # Create schema
-```
+4. **Access the services**
+- Hasura Console: http://localhost:8080/console
+- API Documentation: http://localhost:8081
+- PostgreSQL: localhost:5432
 
 ## Architecture
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌──────────────────────┐
-│  Sleeper API    │────▶│  Sync Service   │────▶│   PostgreSQL (Raw)   │
-└─────────────────┘     │      (Go)       │     └──────────────────────┘
-                        └─────────────────┘              │
-                                 │                        ▼ ETL
-                                 │               ┌──────────────────────┐
-                                 └──────────────▶│ PostgreSQL (Analytics)│
-                                                 └──────────────────────┘
+│  Sleeper API    │────▶│  Sync Service   │────▶│     PostgreSQL       │
+└─────────────────┘     │   (Go) - TBD    │     │    (sleeper_db)      │
+                        └─────────────────┘     └──────────────────────┘
                                                           │
                                                           ▼
                                                  ┌─────────────────┐
@@ -69,38 +63,38 @@ make db-init  # Create schema
 
 | Service | Port | Description |
 |---------|------|-------------|
-| PostgreSQL (Analytics) | 5433 | Normalized database |
-| PostgreSQL (Raw) | 5434 | Raw API responses |
-| Hasura | 8080 | GraphQL API |
-| Sync Service | 8001 | Data synchronization |
-| Prometheus | 9090 | Metrics collection |
-| Grafana | 3000 | Dashboards |
+| PostgreSQL | 5432 | Main database (sleeper schema) |
+| Hasura | 8080 | GraphQL API & Console |
+| Docs | 8081 | API Documentation (Swagger) |
 
 ## Development
 
 ### Available Commands
 
 ```bash
-make help         # Show all available commands
-make dev          # Start development environment
-make test         # Run tests
-make go-run       # Run sync service locally
-make logs         # View all logs
-make sync-league  # Trigger manual sync
+make help           # Show all available commands
+make up             # Start all services
+make down           # Stop all services
+make clean          # Stop services and remove volumes
+make logs           # Show all logs
+make logs-db        # Show database logs
+make logs-hasura    # Show Hasura logs
+make ps             # Show running containers
+make db-console     # Open PostgreSQL console
+make hasura-console # Open Hasura console in browser
+make rebuild        # Clean rebuild everything
 ```
 
 ### Project Structure
 
 ```
 sleeper-db/
-├── sync-service/        # Go synchronization service
-│   ├── cmd/sync/       # Main application
-│   ├── internal/       # Internal packages
-│   └── pkg/           # Shared packages
-├── database/           # Database schema and migrations
-├── hasura/            # Hasura metadata and migrations
-├── monitoring/        # Prometheus and Grafana configs
+├── init/              # Database initialization SQL scripts
+├── docs/              # API documentation and Swagger
+├── hasura/            # Hasura metadata
+├── scripts/           # Utility scripts
 ├── docker-compose.yml # Main Docker configuration
+├── .env.example       # Environment variables template
 └── Makefile          # Development commands
 ```
 
@@ -125,27 +119,29 @@ query GetLeagueStandings($league_id: String!) {
 }
 ```
 
-### Trigger Sync (REST API)
+### Access Hasura Console
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/sync/league \
-  -H "Content-Type: application/json" \
-  -d '{"league_id":"YOUR_LEAGUE_ID"}'
+make hasura-console
+# Or navigate to: http://localhost:8080/console
+# Admin Secret: check your .env file (HASURA_ADMIN_SECRET)
 ```
 
-## Monitoring
+## Access Points
 
-- **Grafana Dashboards**: http://localhost:3000 (admin/admin)
-- **Prometheus Metrics**: http://localhost:9090
-- **Hasura Console**: http://localhost:8080
+- **Hasura Console**: http://localhost:8080/console
+- **GraphQL Endpoint**: http://localhost:8080/v1/graphql
+- **API Documentation**: http://localhost:8081
 
-## Performance
+## Database Schema
 
-- **Memory Usage**: ~50MB (Go) vs ~300MB (Python equivalent)
-- **Container Size**: 11MB (Go) vs 150MB+ (Python)
-- **Startup Time**: <100ms
-- **Concurrent Connections**: 10,000+
-- **Database Operations**: 10,000+ ops/sec
+The database contains 32+ normalized tables in the `sleeper` schema, including:
+- Users and leagues
+- Rosters and players
+- Transactions and trades
+- Matchups and scoring
+- Drafts and picks
+- And more...
 
 ## Documentation
 

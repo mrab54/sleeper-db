@@ -6,35 +6,35 @@ help: ## Show this help
 
 .PHONY: up
 up: ## Start all services
-	docker-compose up -d
+	docker compose up -d
 
 .PHONY: down
 down: ## Stop all services
-	docker-compose down
+	docker compose down
 
 .PHONY: clean
 clean: ## Stop services and remove volumes
-	docker-compose down -v
+	docker compose down -v
 
 .PHONY: logs
 logs: ## Show all logs
-	docker-compose logs -f
+	docker compose logs -f
 
 .PHONY: logs-db
 logs-db: ## Show database logs
-	docker-compose logs -f postgres
+	docker compose logs -f postgres
 
 .PHONY: logs-hasura
 logs-hasura: ## Show Hasura logs
-	docker-compose logs -f hasura
+	docker compose logs -f hasura
 
 .PHONY: ps
 ps: ## Show running containers
-	docker-compose ps
+	docker compose ps
 
 .PHONY: db-console
 db-console: ## Open PostgreSQL console
-	docker-compose exec postgres psql -U sleeper_user -d sleeper_db
+	docker compose exec postgres psql -U sleeper_user -d sleeper_db
 
 .PHONY: hasura-console
 hasura-console: ## Open Hasura console in browser
@@ -44,5 +44,5 @@ hasura-console: ## Open Hasura console in browser
 
 .PHONY: rebuild
 rebuild: clean ## Clean rebuild everything
-	docker-compose build --no-cache
-	docker-compose up -d
+	docker compose build --no-cache
+	docker compose up -d

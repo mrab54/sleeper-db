@@ -96,3 +96,4 @@ sleeper-db/
 - Monitoring and alerting not configured
 - No backup strategy defined yet
 - There will be no python in this entire project.
+- do not ever try to do a recursive directory delete "rm -rf" NEVER or I will cut off your nuts
