@@ -1,62 +1,72 @@
 # Sleeper Fantasy Football Database
 
-A high-performance, normalized PostgreSQL database for Sleeper Fantasy Football data with Hasura GraphQL API and Go-based synchronization service.
+A high-performance, normalized PostgreSQL database for Sleeper Fantasy Football data with Hasura GraphQL API and automated data synchronization.
 
 ## Features
 
-- 🚀 **High-Performance Go Sync Service** - Blazing fast data synchronization
-- 📊 **Normalized PostgreSQL Database** - Properly structured data with 20+ tables
+- 🚀 **High-Performance Go Sync Service** - Intelligent data synchronization with change detection
+- 📊 **Normalized PostgreSQL Database** - 32 properly structured tables
 - 🔄 **GraphQL API via Hasura** - Instant GraphQL queries and subscriptions
 - 🐳 **Docker-based Deployment** - Easy setup with Docker Compose
-- 📈 **Prometheus + Grafana Monitoring** - Complete observability
-- ⚡ **Real-time Updates** - Live scoring during games
+- ⏰ **Scheduled Syncing** - Automated daily full sync and 5-minute incremental updates
 - 🔒 **Idempotent Operations** - Safe retries and concurrent syncs
+- 📈 **Prometheus Metrics** - Built-in monitoring support
 
 ## Quick Start
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- Go 1.21+ (for local development)
 - Make
 
 ### Setup
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/mrab54/sleeper-db.git
+git clone https://github.com/yourusername/sleeper-db.git
 cd sleeper-db
 ```
 
-2. **Configure environment**
+2. **Configure environment** (optional)
 ```bash
 cp .env.example .env
 # Edit .env with your configuration
 ```
 
-3. **Start the services**
+3. **Start all services**
 ```bash
-make up       # Start all services
+make up       # Start PostgreSQL, Hasura, Sync Service, and Docs
 ```
 
 4. **Access the services**
 - Hasura Console: http://localhost:8080/console
 - API Documentation: http://localhost:8081
+- Sync Service Webhooks: http://localhost:8082
+- Metrics: http://localhost:9090/metrics
 - PostgreSQL: localhost:5432
+
+5. **Initialize with data** (first time only)
+```bash
+# Sync a specific user's leagues
+docker exec sleeper-sync /app/sleeper-sync sync user <username_or_user_id>
+
+# Or trigger a full sync
+docker exec sleeper-sync /app/sleeper-sync sync all
+```
 
 ## Architecture
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌──────────────────────┐
-│  Sleeper API    │────▶│  Sync Service   │────▶│     PostgreSQL       │
-└─────────────────┘     │   (Go) - TBD    │     │    (sleeper_db)      │
+│  Sleeper API    │◀────│  Sync Service   │────▶│     PostgreSQL       │
+└─────────────────┘     │      (Go)       │     │    (sleeper_db)      │
                         └─────────────────┘     └──────────────────────┘
-                                                          │
-                                                          ▼
-                                                 ┌─────────────────┐
-                                                 │     Hasura      │
-                                                 │   (GraphQL)     │
-                                                 └─────────────────┘
+                                ▲                         │
+                                │                         ▼
+                        ┌───────────────┐       ┌─────────────────┐
+                        │ Hasura Cron   │       │     Hasura      │
+                        │   Scheduler   │       │   (GraphQL)     │
+                        └───────────────┘       └─────────────────┘
 ```
 
 ## Services
@@ -66,6 +76,8 @@ make up       # Start all services
 | PostgreSQL | 5432 | Main database (sleeper schema) |
 | Hasura | 8080 | GraphQL API & Console |
 | Docs | 8081 | API Documentation (Swagger) |
+| Sync Service | 8082 | Data synchronization webhooks |
+| Metrics | 9090 | Prometheus metrics endpoint |
 
 ## Development
 
@@ -91,8 +103,15 @@ make rebuild        # Clean rebuild everything
 sleeper-db/
 ├── init/              # Database initialization SQL scripts
 ├── docs/              # API documentation and Swagger
-├── hasura/            # Hasura metadata
-├── scripts/           # Utility scripts
+├── hasura/            # Hasura metadata and cron triggers
+├── sleeper-sync/      # Go sync service
+│   ├── cmd/           # CLI commands
+│   ├── internal/      # Business logic
+│   │   ├── api/       # Sleeper API client
+│   │   ├── database/  # Database operations
+│   │   ├── sync/      # Sync orchestration
+│   │   └── webhook/   # Webhook handlers
+│   └── config.yaml    # Sync service configuration
 ├── docker-compose.yml # Main Docker configuration
 ├── .env.example       # Environment variables template
 └── Makefile          # Development commands

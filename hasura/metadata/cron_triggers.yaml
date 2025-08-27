@@ -1,0 +1,29 @@
+- name: full_sync_daily
+  webhook: http://sync:8080/webhook/sync/full
+  schedule: "0 3 * * *"  # 3 AM UTC daily
+  include_in_metadata: true
+  payload: {}
+  retry_conf:
+    num_retries: 3
+    timeout_seconds: 1800  # 30 minutes
+    tolerance_seconds: 21600  # 6 hours
+    retry_interval_seconds: 300  # 5 minutes
+  headers:
+    - name: X-Webhook-Secret
+      value_from_env: WEBHOOK_SECRET
+  comment: "Daily full sync of all Sleeper data"
+
+- name: incremental_sync
+  webhook: http://sync:8080/webhook/sync/incremental
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  include_in_metadata: true
+  payload: {}
+  retry_conf:
+    num_retries: 2
+    timeout_seconds: 300  # 5 minutes
+    tolerance_seconds: 600  # 10 minutes
+    retry_interval_seconds: 60  # 1 minute
+  headers:
+    - name: X-Webhook-Secret
+      value_from_env: WEBHOOK_SECRET
+  comment: "Incremental sync of active leagues every 5 minutes"

@@ -1,25 +1,99 @@
-version: '3.8'
-
 services:
   postgres:
+    image: postgres:17-alpine
+    container_name: sleeper-postgres
     restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_LOG_STATEMENT: none
+      POSTGRES_LOG_DURATION: "off"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - sleeper-net
     deploy:
       resources:
         limits:
           cpus: '2'
           memory: 4G
-    environment:
-      POSTGRES_LOG_STATEMENT: none
-      POSTGRES_LOG_DURATION: "off"
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
 
   hasura:
+    image: hasura/graphql-engine:v2.36.0
+    container_name: sleeper-hasura
     restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
     environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       HASURA_GRAPHQL_ENABLE_CONSOLE: "false"
       HASURA_GRAPHQL_DEV_MODE: "false"
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET}
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
+      HASURA_GRAPHQL_ENABLE_TELEMETRY: "false"
+      HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       HASURA_GRAPHQL_LOG_LEVEL: warn
+    networks:
+      - sleeper-net
     deploy:
       resources:
         limits:
           cpus: '1'
           memory: 2G
+
+  sync:
+    build:
+      context: ./sleeper-sync
+      dockerfile: Dockerfile
+    container_name: sleeper-sync
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8082:8080"
+      - "9090:9090"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      SLEEPER_DATABASE_HOST: postgres
+      SLEEPER_DATABASE_PORT: 5432
+      SLEEPER_DATABASE_DATABASE: ${POSTGRES_DB}
+      SLEEPER_DATABASE_USER: ${POSTGRES_USER}
+      SLEEPER_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      SLEEPER_APP_ENVIRONMENT: production
+      SLEEPER_APP_LOG_LEVEL: warn
+    volumes:
+      - ./sleeper-sync/config.yaml:/app/config.yaml:ro
+    networks:
+      - sleeper-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+networks:
+  sleeper-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

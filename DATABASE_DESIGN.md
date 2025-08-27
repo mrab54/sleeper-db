@@ -4,6 +4,9 @@
 
 This document outlines the normalized PostgreSQL database schema for storing Sleeper fantasy football data. The design follows database normalization principles to eliminate redundancy, ensure data integrity, and provide efficient querying capabilities.
 
+**Schema**: All tables are created in the `sleeper` schema.
+**Database**: `sleeper_db`
+
 ## Design Principles
 
 1. **Normalization**: Tables are normalized to at least 3NF to minimize redundancy
@@ -19,111 +22,111 @@ This document outlines the normalized PostgreSQL database schema for storing Sle
 Stores user account information.
 
 ```sql
-users (
-    user_id VARCHAR PRIMARY KEY,  -- From Sleeper API
-    username VARCHAR UNIQUE,
-    display_name VARCHAR NOT NULL,
-    avatar VARCHAR,  -- Avatar ID for CDN URL construction
+CREATE TABLE sleeper.users (
+    user_id VARCHAR(50) PRIMARY KEY,  -- From Sleeper API
+    username VARCHAR(50) UNIQUE,
+    display_name VARCHAR(100) NOT NULL,
+    avatar VARCHAR(100),  -- Avatar ID for CDN URL construction
     is_bot BOOLEAN DEFAULT FALSE,
-    email VARCHAR,
-    phone VARCHAR,
-    real_name VARCHAR,
-    verification_status VARCHAR,
+    email VARCHAR(255),
+    phone VARCHAR(20),
+    real_name VARCHAR(100),
+    verification_status VARCHAR(20),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     sleeper_created_at TIMESTAMP,  -- When account was created in Sleeper
     metadata JSONB  -- Flexible storage for additional user attributes
-)
+);
 ```
 
 ### 2. Sports Table
 Reference table for supported sports.
 
 ```sql
-sports (
-    sport_id VARCHAR PRIMARY KEY,  -- 'nfl', future: 'nba', etc.
-    sport_name VARCHAR NOT NULL,
+CREATE TABLE sleeper.sports (
+    sport_id VARCHAR(10) PRIMARY KEY,  -- 'nfl', future: 'nba', etc.
+    sport_name VARCHAR(50) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 ```
 
 ### 3. Seasons Table
 Tracks seasons across sports.
 
 ```sql
-seasons (
+CREATE TABLE sleeper.seasons (
     season_id SERIAL PRIMARY KEY,
-    sport_id VARCHAR NOT NULL REFERENCES sports(sport_id),
-    year VARCHAR NOT NULL,  -- '2024'
-    season_type VARCHAR NOT NULL,  -- 'regular', 'post', 'off'
+    sport_id VARCHAR(10) NOT NULL REFERENCES sleeper.sports(sport_id),
+    year VARCHAR(4) NOT NULL,  -- '2024'
+    season_type VARCHAR(10) NOT NULL,  -- 'regular', 'post', 'off'
     start_date DATE,
     end_date DATE,
     is_current BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(sport_id, year)
-)
+);
 ```
 
 ### 4. Sport State Table
 Current state of each sport (week, season info).
 
 ```sql
-sport_states (
+CREATE TABLE sleeper.sport_states (
     state_id SERIAL PRIMARY KEY,
-    sport_id VARCHAR NOT NULL REFERENCES sports(sport_id),
-    season_id INTEGER REFERENCES seasons(season_id),
+    sport_id VARCHAR(10) NOT NULL REFERENCES sleeper.sports(sport_id),
+    season_id INTEGER REFERENCES sleeper.seasons(season_id),
     current_week INTEGER NOT NULL,
-    season_type VARCHAR NOT NULL,
-    season VARCHAR NOT NULL,
+    season_type VARCHAR(10) NOT NULL,
+    season VARCHAR(4) NOT NULL,
     display_week INTEGER,
     leg INTEGER,
-    league_season VARCHAR,
-    league_create_season VARCHAR,
-    previous_season VARCHAR,
+    league_season VARCHAR(4),
+    league_create_season VARCHAR(4),
+    previous_season VARCHAR(4),
     season_start_date DATE,
     season_has_scores BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(sport_id, season)
-)
+);
 ```
 
 ### 5. Leagues Table
 Core league information.
 
 ```sql
-leagues (
-    league_id VARCHAR PRIMARY KEY,  -- From Sleeper API
-    season_id INTEGER NOT NULL REFERENCES seasons(season_id),
-    sport_id VARCHAR NOT NULL REFERENCES sports(sport_id),
-    name VARCHAR NOT NULL,
-    avatar VARCHAR,  -- Avatar ID for CDN URL construction
-    status VARCHAR NOT NULL,  -- 'pre_draft', 'drafting', 'in_season', 'complete'
-    season_type VARCHAR,
+CREATE TABLE sleeper.leagues (
+    league_id VARCHAR(50) PRIMARY KEY,  -- From Sleeper API
+    season_id INTEGER NOT NULL REFERENCES sleeper.seasons(season_id),
+    sport_id VARCHAR(10) NOT NULL REFERENCES sleeper.sports(sport_id),
+    name VARCHAR(255) NOT NULL,
+    avatar VARCHAR(100),  -- Avatar ID for CDN URL construction
+    status VARCHAR(20) NOT NULL,  -- 'pre_draft', 'drafting', 'in_season', 'complete'
+    season_type VARCHAR(20),
     total_rosters INTEGER NOT NULL,
-    draft_id VARCHAR,  -- Reference to drafts table
-    previous_league_id VARCHAR REFERENCES leagues(league_id),
-    bracket_id VARCHAR,
-    loser_bracket_id VARCHAR,
+    draft_id VARCHAR(50),  -- Reference to drafts table
+    previous_league_id VARCHAR(50) REFERENCES sleeper.leagues(league_id),
+    bracket_id VARCHAR(50),
+    loser_bracket_id VARCHAR(50),
     shard INTEGER,
-    company_id VARCHAR,
+    company_id VARCHAR(50),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    last_transaction_id VARCHAR,
+    last_transaction_id VARCHAR(50),
     last_message_time TIMESTAMP,
     display_order INTEGER,
     metadata JSONB  -- Custom league metadata
-)
+);
 ```
 
 ### 6. League Settings Table
 Separated from leagues table for normalization.
 
 ```sql
-league_settings (
-    league_id VARCHAR PRIMARY KEY REFERENCES leagues(league_id) ON DELETE CASCADE,
+CREATE TABLE sleeper.league_settings (
+    league_id VARCHAR(50) PRIMARY KEY REFERENCES sleeper.leagues(league_id) ON DELETE CASCADE,
     max_keepers INTEGER DEFAULT 0,
     draft_rounds INTEGER,
     trade_deadline INTEGER,
@@ -155,15 +158,15 @@ league_settings (
     last_scored_leg INTEGER,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 ```
 
 ### 7. League Scoring Settings Table
 Normalized scoring configuration.
 
 ```sql
-league_scoring_settings (
-    league_id VARCHAR PRIMARY KEY REFERENCES leagues(league_id) ON DELETE CASCADE,
+CREATE TABLE sleeper.league_scoring_settings (
+    league_id VARCHAR(50) PRIMARY KEY REFERENCES sleeper.leagues(league_id) ON DELETE CASCADE,
     pass_td DECIMAL(4,2) DEFAULT 6.0,
     pass_yd DECIMAL(4,2) DEFAULT 0.04,
     pass_int DECIMAL(4,2) DEFAULT -2.0,
@@ -207,43 +210,43 @@ league_scoring_settings (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     additional_scoring JSONB  -- For any non-standard scoring settings
-)
+);
 ```
 
 ### 8. League Roster Positions Table
 Defines roster composition for each league.
 
 ```sql
-league_roster_positions (
+CREATE TABLE sleeper.league_roster_positions (
     position_id SERIAL PRIMARY KEY,
-    league_id VARCHAR NOT NULL REFERENCES leagues(league_id) ON DELETE CASCADE,
-    position VARCHAR NOT NULL,  -- 'QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'K', 'DEF', 'BN'
+    league_id VARCHAR(50) NOT NULL REFERENCES sleeper.leagues(league_id) ON DELETE CASCADE,
+    position VARCHAR(20) NOT NULL,  -- 'QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'K', 'DEF', 'BN'
     count INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(league_id, position)
-)
+);
 ```
 
 ### 9. NFL Teams Table
 Reference table for NFL teams.
 
 ```sql
-nfl_teams (
+CREATE TABLE sleeper.nfl_teams (
     team_abbr VARCHAR(3) PRIMARY KEY,  -- 'KC', 'BUF', etc.
-    team_name VARCHAR NOT NULL,
+    team_name VARCHAR(50) NOT NULL,
     conference VARCHAR(3),  -- 'AFC', 'NFC'
-    division VARCHAR NOT NULL,  -- 'East', 'West', 'North', 'South'
+    division VARCHAR(10) NOT NULL,  -- 'East', 'West', 'North', 'South'
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 ```
 
 ### 10. Players Table
 Master player information.
 
 ```sql
-players (
+CREATE TABLE sleeper.players (
     player_id VARCHAR PRIMARY KEY,  -- From Sleeper API
     first_name VARCHAR,
     last_name VARCHAR,
@@ -280,28 +283,28 @@ players (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     metadata JSONB,  -- Additional flexible attributes
     external_ids JSONB  -- Store all external IDs (ESPN, Yahoo, etc.)
-)
+);
 ```
 
 ### 11. Player Fantasy Positions Table
 Many-to-many relationship for fantasy-eligible positions.
 
 ```sql
-player_fantasy_positions (
-    player_id VARCHAR NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,
+CREATE TABLE sleeper.player_fantasy_positions (
+    player_id VARCHAR NOT NULL REFERENCES sleeper.players(player_id) ON DELETE CASCADE,
     position VARCHAR NOT NULL,
     PRIMARY KEY (player_id, position)
-)
+);
 ```
 
 ### 12. Rosters Table
 Team rosters within leagues.
 
 ```sql
-rosters (
+CREATE TABLE sleeper.rosters (
     roster_id SERIAL PRIMARY KEY,
-    league_id VARCHAR NOT NULL REFERENCES leagues(league_id) ON DELETE CASCADE,
-    owner_user_id VARCHAR REFERENCES users(user_id),
+    league_id VARCHAR NOT NULL REFERENCES sleeper.leagues(league_id) ON DELETE CASCADE,
+    owner_user_id VARCHAR REFERENCES sleeper.users(user_id),
     roster_position INTEGER NOT NULL,  -- 1-based position in league
     wins INTEGER DEFAULT 0,
     losses INTEGER DEFAULT 0,
@@ -317,229 +320,229 @@ rosters (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     metadata JSONB,  -- Team name, avatar, custom settings
     UNIQUE(league_id, roster_position)
-)
+);
 ```
 
 ### 13. Roster Co-Owners Table
 Many-to-many for roster co-ownership.
 
 ```sql
-roster_co_owners (
-    roster_id INTEGER NOT NULL REFERENCES rosters(roster_id) ON DELETE CASCADE,
-    user_id VARCHAR NOT NULL REFERENCES users(user_id),
+CREATE TABLE sleeper.roster_co_owners (
+    roster_id INTEGER NOT NULL REFERENCES sleeper.rosters(roster_id) ON DELETE CASCADE,
+    user_id VARCHAR NOT NULL REFERENCES sleeper.users(user_id),
     PRIMARY KEY (roster_id, user_id)
-)
+);
 ```
 
 ### 14. Roster Players Table
 Current roster compositions (point-in-time).
 
 ```sql
-roster_players (
+CREATE TABLE sleeper.roster_players (
     roster_player_id SERIAL PRIMARY KEY,
-    roster_id INTEGER NOT NULL REFERENCES rosters(roster_id) ON DELETE CASCADE,
-    player_id VARCHAR NOT NULL REFERENCES players(player_id),
+    roster_id INTEGER NOT NULL REFERENCES sleeper.rosters(roster_id) ON DELETE CASCADE,
+    player_id VARCHAR NOT NULL REFERENCES sleeper.players(player_id),
     acquisition_date TIMESTAMP NOT NULL DEFAULT NOW(),
     acquisition_type VARCHAR,  -- 'draft', 'trade', 'waiver', 'free_agent'
     status VARCHAR DEFAULT 'active',  -- 'active', 'reserve', 'taxi', 'inactive'
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(roster_id, player_id)
-)
+);
 ```
 
 ### 15. Weekly Lineups Table
 Starting lineups for each week.
 
 ```sql
-weekly_lineups (
+CREATE TABLE sleeper.weekly_lineups (
     lineup_id SERIAL PRIMARY KEY,
-    roster_id INTEGER NOT NULL REFERENCES rosters(roster_id) ON DELETE CASCADE,
+    roster_id INTEGER NOT NULL REFERENCES sleeper.rosters(roster_id) ON DELETE CASCADE,
     week INTEGER NOT NULL,
-    season_id INTEGER NOT NULL REFERENCES seasons(season_id),
+    season_id INTEGER NOT NULL REFERENCES sleeper.seasons(season_id),
     submitted_at TIMESTAMP,
     is_final BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(roster_id, week, season_id)
-)
+);
 ```
 
 ### 16. Lineup Players Table
 Players in each weekly lineup.
 
 ```sql
-lineup_players (
+CREATE TABLE sleeper.lineup_players (
     lineup_player_id SERIAL PRIMARY KEY,
-    lineup_id INTEGER NOT NULL REFERENCES weekly_lineups(lineup_id) ON DELETE CASCADE,
-    player_id VARCHAR NOT NULL REFERENCES players(player_id),
+    lineup_id INTEGER NOT NULL REFERENCES sleeper.weekly_lineups(lineup_id) ON DELETE CASCADE,
+    player_id VARCHAR NOT NULL REFERENCES sleeper.players(player_id),
     roster_slot VARCHAR NOT NULL,  -- 'QB', 'RB1', 'RB2', 'WR1', 'FLEX', 'BN1', etc.
     slot_index INTEGER NOT NULL,  -- Order within position
     projected_points DECIMAL(6,2),
     actual_points DECIMAL(6,2),
     is_starter BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 ```
 
 ### 17. Matchups Table
 Weekly head-to-head matchups.
 
 ```sql
-matchups (
+CREATE TABLE sleeper.matchups (
     matchup_id SERIAL PRIMARY KEY,
-    league_id VARCHAR NOT NULL REFERENCES leagues(league_id) ON DELETE CASCADE,
+    league_id VARCHAR NOT NULL REFERENCES sleeper.leagues(league_id) ON DELETE CASCADE,
     week INTEGER NOT NULL,
-    season_id INTEGER NOT NULL REFERENCES seasons(season_id),
+    season_id INTEGER NOT NULL REFERENCES sleeper.seasons(season_id),
     matchup_number INTEGER NOT NULL,  -- Groups matchups together
     is_playoff BOOLEAN DEFAULT FALSE,
     is_consolation BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(league_id, week, season_id, matchup_number)
-)
+);
 ```
 
 ### 18. Matchup Teams Table
 Teams participating in matchups.
 
 ```sql
-matchup_teams (
+CREATE TABLE sleeper.matchup_teams (
     matchup_team_id SERIAL PRIMARY KEY,
-    matchup_id INTEGER NOT NULL REFERENCES matchups(matchup_id) ON DELETE CASCADE,
-    roster_id INTEGER NOT NULL REFERENCES rosters(roster_id),
+    matchup_id INTEGER NOT NULL REFERENCES sleeper.matchups(matchup_id) ON DELETE CASCADE,
+    roster_id INTEGER NOT NULL REFERENCES sleeper.rosters(roster_id),
     points DECIMAL(8,2) DEFAULT 0,
     custom_points DECIMAL(8,2),
     is_winner BOOLEAN,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 ```
 
 ### 19. Matchup Player Stats Table
 Individual player performance in matchups.
 
 ```sql
-matchup_player_stats (
+CREATE TABLE sleeper.matchup_player_stats (
     stat_id SERIAL PRIMARY KEY,
-    matchup_team_id INTEGER NOT NULL REFERENCES matchup_teams(matchup_team_id) ON DELETE CASCADE,
-    player_id VARCHAR NOT NULL REFERENCES players(player_id),
+    matchup_team_id INTEGER NOT NULL REFERENCES sleeper.matchup_teams(matchup_team_id) ON DELETE CASCADE,
+    player_id VARCHAR NOT NULL REFERENCES sleeper.players(player_id),
     points DECIMAL(6,2) NOT NULL,
     projected_points DECIMAL(6,2),
     is_starter BOOLEAN DEFAULT TRUE,
     slot_position VARCHAR,  -- Position they were started in
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 ```
 
 ### 20. Playoff Brackets Table
 Playoff bracket structure.
 
 ```sql
-playoff_brackets (
+CREATE TABLE sleeper.playoff_brackets (
     bracket_id SERIAL PRIMARY KEY,
-    league_id VARCHAR NOT NULL REFERENCES leagues(league_id) ON DELETE CASCADE,
+    league_id VARCHAR NOT NULL REFERENCES sleeper.leagues(league_id) ON DELETE CASCADE,
     bracket_type VARCHAR NOT NULL,  -- 'winners', 'losers', 'toilet'
-    season_id INTEGER NOT NULL REFERENCES seasons(season_id),
+    season_id INTEGER NOT NULL REFERENCES sleeper.seasons(season_id),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(league_id, bracket_type, season_id)
-)
+);
 ```
 
 ### 21. Playoff Matchups Table
 Playoff bracket matchups.
 
 ```sql
-playoff_matchups (
+CREATE TABLE sleeper.playoff_matchups (
     playoff_matchup_id SERIAL PRIMARY KEY,
-    bracket_id INTEGER NOT NULL REFERENCES playoff_brackets(bracket_id) ON DELETE CASCADE,
+    bracket_id INTEGER NOT NULL REFERENCES sleeper.playoff_brackets(bracket_id) ON DELETE CASCADE,
     round INTEGER NOT NULL,
     matchup_number INTEGER NOT NULL,
-    team1_roster_id INTEGER REFERENCES rosters(roster_id),
-    team2_roster_id INTEGER REFERENCES rosters(roster_id),
-    winner_roster_id INTEGER REFERENCES rosters(roster_id),
+    team1_roster_id INTEGER REFERENCES sleeper.rosters(roster_id),
+    team2_roster_id INTEGER REFERENCES sleeper.rosters(roster_id),
+    winner_roster_id INTEGER REFERENCES sleeper.rosters(roster_id),
     team1_seed INTEGER,
     team2_seed INTEGER,
-    team1_from_matchup INTEGER REFERENCES playoff_matchups(playoff_matchup_id),
+    team1_from_matchup INTEGER REFERENCES sleeper.playoff_matchups(playoff_matchup_id),
     team1_from_result VARCHAR,  -- 'W' or 'L'
-    team2_from_matchup INTEGER REFERENCES playoff_matchups(playoff_matchup_id),
+    team2_from_matchup INTEGER REFERENCES sleeper.playoff_matchups(playoff_matchup_id),
     team2_from_result VARCHAR,  -- 'W' or 'L'
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 ```
 
 ### 22. Transactions Table
 All league transactions.
 
 ```sql
-transactions (
+CREATE TABLE sleeper.transactions (
     transaction_id VARCHAR PRIMARY KEY,  -- From Sleeper API
-    league_id VARCHAR NOT NULL REFERENCES leagues(league_id) ON DELETE CASCADE,
+    league_id VARCHAR NOT NULL REFERENCES sleeper.leagues(league_id) ON DELETE CASCADE,
     type VARCHAR NOT NULL,  -- 'trade', 'waiver', 'free_agent', 'commissioner'
     status VARCHAR NOT NULL,  -- 'complete', 'pending', 'failed'
     week INTEGER NOT NULL,
-    season_id INTEGER NOT NULL REFERENCES seasons(season_id),
+    season_id INTEGER NOT NULL REFERENCES sleeper.seasons(season_id),
     status_updated_at TIMESTAMP,
-    creator_user_id VARCHAR REFERENCES users(user_id),
+    creator_user_id VARCHAR REFERENCES sleeper.users(user_id),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     processed_at TIMESTAMP,
     metadata JSONB  -- Additional transaction details
-)
+);
 ```
 
 ### 23. Transaction Roster Involvement Table
 Which rosters are involved in transactions.
 
 ```sql
-transaction_rosters (
-    transaction_id VARCHAR NOT NULL REFERENCES transactions(transaction_id) ON DELETE CASCADE,
-    roster_id INTEGER NOT NULL REFERENCES rosters(roster_id),
+CREATE TABLE sleeper.transaction_rosters (
+    transaction_id VARCHAR NOT NULL REFERENCES sleeper.transactions(transaction_id) ON DELETE CASCADE,
+    roster_id INTEGER NOT NULL REFERENCES sleeper.rosters(roster_id),
     is_consenter BOOLEAN DEFAULT FALSE,  -- Needs to approve
     has_consented BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (transaction_id, roster_id)
-)
+);
 ```
 
 ### 24. Transaction Players Table
 Player adds/drops in transactions.
 
 ```sql
-transaction_players (
+CREATE TABLE sleeper.transaction_players (
     transaction_player_id SERIAL PRIMARY KEY,
-    transaction_id VARCHAR NOT NULL REFERENCES transactions(transaction_id) ON DELETE CASCADE,
-    player_id VARCHAR NOT NULL REFERENCES players(player_id),
+    transaction_id VARCHAR NOT NULL REFERENCES sleeper.transactions(transaction_id) ON DELETE CASCADE,
+    player_id VARCHAR NOT NULL REFERENCES sleeper.players(player_id),
     action VARCHAR NOT NULL,  -- 'add' or 'drop'
-    roster_id INTEGER NOT NULL REFERENCES rosters(roster_id),
+    roster_id INTEGER NOT NULL REFERENCES sleeper.rosters(roster_id),
     waiver_bid INTEGER,  -- FAAB amount if applicable
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 ```
 
 ### 25. Transaction Draft Picks Table
 Draft picks involved in trades.
 
 ```sql
-transaction_draft_picks (
+CREATE TABLE sleeper.transaction_draft_picks (
     transaction_pick_id SERIAL PRIMARY KEY,
-    transaction_id VARCHAR NOT NULL REFERENCES transactions(transaction_id) ON DELETE CASCADE,
+    transaction_id VARCHAR NOT NULL REFERENCES sleeper.transactions(transaction_id) ON DELETE CASCADE,
     season VARCHAR NOT NULL,
     round INTEGER NOT NULL,
-    from_roster_id INTEGER NOT NULL REFERENCES rosters(roster_id),
-    to_roster_id INTEGER NOT NULL REFERENCES rosters(roster_id),
-    original_owner_roster_id INTEGER REFERENCES rosters(roster_id),
+    from_roster_id INTEGER NOT NULL REFERENCES sleeper.rosters(roster_id),
+    to_roster_id INTEGER NOT NULL REFERENCES sleeper.rosters(roster_id),
+    original_owner_roster_id INTEGER REFERENCES sleeper.rosters(roster_id),
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 ```
 
 ### 26. Drafts Table
 Draft information.
 
 ```sql
-drafts (
+CREATE TABLE sleeper.drafts (
     draft_id VARCHAR PRIMARY KEY,  -- From Sleeper API
-    league_id VARCHAR NOT NULL REFERENCES leagues(league_id),
-    sport_id VARCHAR NOT NULL REFERENCES sports(sport_id),
-    season_id INTEGER NOT NULL REFERENCES seasons(season_id),
+    league_id VARCHAR NOT NULL REFERENCES sleeper.leagues(league_id),
+    sport_id VARCHAR NOT NULL REFERENCES sleeper.sports(sport_id),
+    season_id INTEGER NOT NULL REFERENCES sleeper.seasons(season_id),
     type VARCHAR NOT NULL,  -- 'snake', 'linear', 'auction'
     status VARCHAR NOT NULL,  -- 'pre_draft', 'drafting', 'paused', 'complete'
     start_time TIMESTAMP,
@@ -555,88 +558,88 @@ drafts (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     completed_at TIMESTAMP,
     metadata JSONB  -- Additional draft settings
-)
+);
 ```
 
 ### 27. Draft Slots Table
 Maps draft positions to rosters.
 
 ```sql
-draft_slots (
-    draft_id VARCHAR NOT NULL REFERENCES drafts(draft_id) ON DELETE CASCADE,
+CREATE TABLE sleeper.draft_slots (
+    draft_id VARCHAR NOT NULL REFERENCES sleeper.drafts(draft_id) ON DELETE CASCADE,
     slot INTEGER NOT NULL,
-    roster_id INTEGER REFERENCES rosters(roster_id),
-    user_id VARCHAR REFERENCES users(user_id),
+    roster_id INTEGER REFERENCES sleeper.rosters(roster_id),
+    user_id VARCHAR REFERENCES sleeper.users(user_id),
     is_keeper_slot BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (draft_id, slot)
-)
+);
 ```
 
 ### 28. Draft Picks Table
 Individual draft selections.
 
 ```sql
-draft_picks (
+CREATE TABLE sleeper.draft_picks (
     pick_id SERIAL PRIMARY KEY,
-    draft_id VARCHAR NOT NULL REFERENCES drafts(draft_id) ON DELETE CASCADE,
+    draft_id VARCHAR NOT NULL REFERENCES sleeper.drafts(draft_id) ON DELETE CASCADE,
     round INTEGER NOT NULL,
     pick_in_round INTEGER NOT NULL,
     overall_pick INTEGER NOT NULL,
     slot INTEGER NOT NULL,
-    roster_id INTEGER REFERENCES rosters(roster_id),
-    player_id VARCHAR REFERENCES players(player_id),
-    picked_by_user_id VARCHAR REFERENCES users(user_id),
+    roster_id INTEGER REFERENCES sleeper.rosters(roster_id),
+    player_id VARCHAR REFERENCES sleeper.players(player_id),
+    picked_by_user_id VARCHAR REFERENCES sleeper.users(user_id),
     pick_time TIMESTAMP,
     is_keeper BOOLEAN DEFAULT FALSE,
     auction_amount INTEGER,  -- For auction drafts
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     metadata JSONB,  -- Player info at time of pick
     UNIQUE(draft_id, overall_pick)
-)
+);
 ```
 
 ### 29. Traded Draft Picks Table
 Tracks future draft pick trades.
 
 ```sql
-traded_draft_picks (
+CREATE TABLE sleeper.traded_draft_picks (
     traded_pick_id SERIAL PRIMARY KEY,
-    league_id VARCHAR NOT NULL REFERENCES leagues(league_id) ON DELETE CASCADE,
+    league_id VARCHAR NOT NULL REFERENCES sleeper.leagues(league_id) ON DELETE CASCADE,
     season VARCHAR NOT NULL,
     round INTEGER NOT NULL,
-    original_owner_roster_id INTEGER NOT NULL REFERENCES rosters(roster_id),
-    current_owner_roster_id INTEGER NOT NULL REFERENCES rosters(roster_id),
-    previous_owner_roster_id INTEGER REFERENCES rosters(roster_id),
-    trade_transaction_id VARCHAR REFERENCES transactions(transaction_id),
+    original_owner_roster_id INTEGER NOT NULL REFERENCES sleeper.rosters(roster_id),
+    current_owner_roster_id INTEGER NOT NULL REFERENCES sleeper.rosters(roster_id),
+    previous_owner_roster_id INTEGER REFERENCES sleeper.rosters(roster_id),
+    trade_transaction_id VARCHAR REFERENCES sleeper.transactions(transaction_id),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-)
+);
 ```
 
 ### 30. Player Trending Table
 Tracks trending player adds/drops.
 
 ```sql
-player_trending (
+CREATE TABLE sleeper.player_trending (
     trending_id SERIAL PRIMARY KEY,
-    player_id VARCHAR NOT NULL REFERENCES players(player_id),
-    sport_id VARCHAR NOT NULL REFERENCES sports(sport_id),
+    player_id VARCHAR NOT NULL REFERENCES sleeper.players(player_id),
+    sport_id VARCHAR NOT NULL REFERENCES sleeper.sports(sport_id),
     trend_type VARCHAR NOT NULL,  -- 'add' or 'drop'
     count INTEGER NOT NULL,
     date DATE NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(player_id, sport_id, trend_type, date)
-)
+);
 ```
 
 ### 31. League Members Table
 User membership in leagues.
 
 ```sql
-league_members (
-    league_id VARCHAR NOT NULL REFERENCES leagues(league_id) ON DELETE CASCADE,
-    user_id VARCHAR NOT NULL REFERENCES users(user_id),
-    roster_id INTEGER REFERENCES rosters(roster_id),
+CREATE TABLE sleeper.league_members (
+    league_id VARCHAR NOT NULL REFERENCES sleeper.leagues(league_id) ON DELETE CASCADE,
+    user_id VARCHAR NOT NULL REFERENCES sleeper.users(user_id),
+    roster_id INTEGER REFERENCES sleeper.rosters(roster_id),
     is_owner BOOLEAN DEFAULT FALSE,
     is_commissioner BOOLEAN DEFAULT FALSE,
     join_date TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -648,14 +651,14 @@ league_members (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     metadata JSONB,  -- User-specific league settings
     PRIMARY KEY (league_id, user_id)
-)
+);
 ```
 
 ### 32. Data Sync Log Table
 Track API synchronization history.
 
 ```sql
-data_sync_log (
+CREATE TABLE sleeper.data_sync_log (
     sync_id SERIAL PRIMARY KEY,
     sync_type VARCHAR NOT NULL,  -- 'leagues', 'rosters', 'players', 'matchups', etc.
     entity_id VARCHAR,  -- League ID, user ID, etc.
@@ -665,7 +668,7 @@ data_sync_log (
     records_processed INTEGER DEFAULT 0,
     error_message TEXT,
     metadata JSONB  -- Additional sync details
-)
+);
 ```
 
 ## Indexes
@@ -673,45 +676,45 @@ data_sync_log (
 ### Performance Indexes
 ```sql
 -- User lookups
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_email ON users(email) WHERE email IS NOT NULL;
+CREATE INDEX idx_users_username ON sleeper.users(username);
+CREATE INDEX idx_users_email ON sleeper.users(email) WHERE email IS NOT NULL;
 
 -- League queries
-CREATE INDEX idx_leagues_sport_season ON leagues(sport_id, season_id);
-CREATE INDEX idx_leagues_status ON leagues(status);
-CREATE INDEX idx_league_members_user ON league_members(user_id);
+CREATE INDEX idx_leagues_sport_season ON sleeper.leagues(sport_id, season_id);
+CREATE INDEX idx_leagues_status ON sleeper.leagues(status);
+CREATE INDEX idx_league_members_user ON sleeper.league_members(user_id);
 
 -- Player searches
-CREATE INDEX idx_players_search_name ON players(search_full_name);
-CREATE INDEX idx_players_team ON players(team_abbr);
-CREATE INDEX idx_players_position ON players(position);
-CREATE INDEX idx_players_status ON players(status);
+CREATE INDEX idx_players_search_name ON sleeper.players(search_full_name);
+CREATE INDEX idx_players_team ON sleeper.players(team_abbr);
+CREATE INDEX idx_players_position ON sleeper.players(position);
+CREATE INDEX idx_players_status ON sleeper.players(status);
 
 -- Roster queries
-CREATE INDEX idx_rosters_league ON rosters(league_id);
-CREATE INDEX idx_rosters_owner ON rosters(owner_user_id);
-CREATE INDEX idx_roster_players_roster ON roster_players(roster_id);
-CREATE INDEX idx_roster_players_player ON roster_players(player_id);
+CREATE INDEX idx_rosters_league ON sleeper.rosters(league_id);
+CREATE INDEX idx_rosters_owner ON sleeper.rosters(owner_user_id);
+CREATE INDEX idx_roster_players_roster ON sleeper.roster_players(roster_id);
+CREATE INDEX idx_roster_players_player ON sleeper.roster_players(player_id);
 
 -- Matchup queries
-CREATE INDEX idx_matchups_league_week ON matchups(league_id, week);
-CREATE INDEX idx_matchup_teams_matchup ON matchup_teams(matchup_id);
-CREATE INDEX idx_matchup_teams_roster ON matchup_teams(roster_id);
+CREATE INDEX idx_matchups_league_week ON sleeper.matchups(league_id, week);
+CREATE INDEX idx_matchup_teams_matchup ON sleeper.matchup_teams(matchup_id);
+CREATE INDEX idx_matchup_teams_roster ON sleeper.matchup_teams(roster_id);
 
 -- Transaction queries
-CREATE INDEX idx_transactions_league ON transactions(league_id);
-CREATE INDEX idx_transactions_type_status ON transactions(type, status);
-CREATE INDEX idx_transactions_week ON transactions(week);
-CREATE INDEX idx_transaction_players_player ON transaction_players(player_id);
+CREATE INDEX idx_transactions_league ON sleeper.transactions(league_id);
+CREATE INDEX idx_transactions_type_status ON sleeper.transactions(type, status);
+CREATE INDEX idx_transactions_week ON sleeper.transactions(week);
+CREATE INDEX idx_transaction_players_player ON sleeper.transaction_players(player_id);
 
 -- Draft queries
-CREATE INDEX idx_drafts_league ON drafts(league_id);
-CREATE INDEX idx_draft_picks_draft ON draft_picks(draft_id);
-CREATE INDEX idx_draft_picks_player ON draft_picks(player_id);
+CREATE INDEX idx_drafts_league ON sleeper.drafts(league_id);
+CREATE INDEX idx_draft_picks_draft ON sleeper.draft_picks(draft_id);
+CREATE INDEX idx_draft_picks_player ON sleeper.draft_picks(player_id);
 
 -- Trending data
-CREATE INDEX idx_player_trending_date ON player_trending(date DESC);
-CREATE INDEX idx_player_trending_player ON player_trending(player_id);
+CREATE INDEX idx_player_trending_date ON sleeper.player_trending(date DESC);
+CREATE INDEX idx_player_trending_player ON sleeper.player_trending(player_id);
 ```
 
 ## Views
@@ -733,9 +736,9 @@ SELECT
     r.waiver_budget_used,
     l.name as league_name,
     l.status as league_status
-FROM rosters r
-LEFT JOIN users u ON r.owner_user_id = u.user_id
-LEFT JOIN leagues l ON r.league_id = l.league_id;
+FROM sleeper.rosters r
+LEFT JOIN sleeper.users u ON r.owner_user_id = u.user_id
+LEFT JOIN sleeper.leagues l ON r.league_id = l.league_id;
 ```
 
 ### 2. Player Stats Summary View
@@ -750,10 +753,10 @@ SELECT
     AVG(mps.points) as avg_points,
     SUM(tp.action = 'add') as total_adds,
     SUM(tp.action = 'drop') as total_drops
-FROM players p
-LEFT JOIN roster_players rp ON p.player_id = rp.player_id
-LEFT JOIN matchup_player_stats mps ON p.player_id = mps.player_id
-LEFT JOIN transaction_players tp ON p.player_id = tp.player_id
+FROM sleeper.players p
+LEFT JOIN sleeper.roster_players rp ON p.player_id = rp.player_id
+LEFT JOIN sleeper.matchup_player_stats mps ON p.player_id = mps.player_id
+LEFT JOIN sleeper.transaction_players tp ON p.player_id = tp.player_id
 GROUP BY p.player_id, p.full_name, p.position, p.team_abbr;
 ```
 
@@ -775,8 +778,8 @@ SELECT
         PARTITION BY r.league_id 
         ORDER BY r.wins DESC, r.fantasy_points_for DESC
     ) as rank
-FROM rosters r
-LEFT JOIN users u ON r.owner_user_id = u.user_id;
+FROM sleeper.rosters r
+LEFT JOIN sleeper.users u ON r.owner_user_id = u.user_id;
 ```
 
 ## Data Integrity Constraints

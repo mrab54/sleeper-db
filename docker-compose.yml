@@ -51,6 +51,31 @@ services:
     networks:
       - sleeper-net
 
+  sync:
+    build:
+      context: ./sleeper-sync
+      dockerfile: Dockerfile
+    container_name: sleeper-sync
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8082:8080"  # Webhook server port
+      - "9090:9090"  # Metrics port
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-changeme}
+      SLEEPER_DATABASE_HOST: postgres
+      SLEEPER_DATABASE_PORT: 5432
+      SLEEPER_DATABASE_DATABASE: ${POSTGRES_DB:-sleeper_db}
+      SLEEPER_DATABASE_USER: ${POSTGRES_USER:-sleeper_user}
+      SLEEPER_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
+    volumes:
+      - ./sleeper-sync/config.yaml:/app/config.yaml:ro
+    networks:
+      - sleeper-net
+
 networks:
   sleeper-net:
     driver: bridge
