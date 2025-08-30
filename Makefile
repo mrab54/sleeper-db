@@ -47,43 +47,6 @@ rebuild: clean ## Clean rebuild everything
 	docker compose build --no-cache
 	docker compose up -d
 
-# Sync Service Commands
-.PHONY: build-sync
-build-sync: ## Build sync service
-	docker compose build sync
-
-.PHONY: logs-sync
-logs-sync: ## Show sync service logs
-	docker compose logs -f sync
-
-.PHONY: sync-all
-sync-all: ## Run full data sync
-	docker compose exec sync /app/sleeper-sync sync all
-
-.PHONY: sync-incremental
-sync-incremental: ## Run incremental sync
-	docker compose exec sync /app/sleeper-sync sync incremental
-
-.PHONY: sync-league
-sync-league: ## Sync specific league (usage: make sync-league LEAGUE_ID=xxx)
-	@if [ -z "$(LEAGUE_ID)" ]; then \
-		echo "Error: LEAGUE_ID is required. Usage: make sync-league LEAGUE_ID=xxx"; \
-		exit 1; \
-	fi
-	docker compose exec sync /app/sleeper-sync sync league $(LEAGUE_ID)
-
-.PHONY: sync-user
-sync-user: ## Sync user's leagues (usage: make sync-user USER_ID=xxx)
-	@if [ -z "$(USER_ID)" ]; then \
-		echo "Error: USER_ID is required. Usage: make sync-user USER_ID=xxx"; \
-		exit 1; \
-	fi
-	docker compose exec sync /app/sleeper-sync sync user $(USER_ID)
-
-.PHONY: sync-health
-sync-health: ## Check sync service health
-	@curl -s http://localhost:8082/health | jq . || echo "Sync service not responding"
-
-.PHONY: metrics
-metrics: ## Show Prometheus metrics
-	@curl -s http://localhost:9090/metrics | head -20
+.PHONY: uninstall
+uninstall: ## Complete uninstall - runs the uninstall.sh script
+	@./uninstall.sh

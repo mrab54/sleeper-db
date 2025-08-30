@@ -1,3 +1,14 @@
-# Hasura database configuration
-# Tables should be tracked manually through the Hasura console
-[]
+- name: sleeper_db
+  kind: postgres
+  configuration:
+    connection_info:
+      use_prepared_statements: true
+      database_url:
+        from_env: HASURA_GRAPHQL_DATABASE_URL
+      isolation_level: read-committed
+      pool_settings:
+        connection_lifetime: 600
+        retries: 1
+        idle_timeout: 180
+        max_connections: 50
+  tables: "!include sleeper_db/tables/tables.yaml"

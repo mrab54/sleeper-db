@@ -1,0 +1,139 @@
+- table:
+    schema: sleeper
+    name: data_sync_log
+- table:
+    schema: sleeper
+    name: draft
+- table:
+    schema: sleeper
+    name: draft_pick
+- table:
+    schema: sleeper
+    name: draft_slot
+- table:
+    schema: sleeper
+    name: league
+- table:
+    schema: sleeper
+    name: league_draft
+- table:
+    schema: sleeper
+    name: league_member
+- table:
+    schema: sleeper
+    name: league_roster_position
+- table:
+    schema: sleeper
+    name: league_scoring_setting
+- table:
+    schema: sleeper
+    name: league_setting
+- table:
+    schema: sleeper
+    name: lineup_player
+- table:
+    schema: sleeper
+    name: matchup
+- table:
+    schema: sleeper
+    name: matchup_player_stat
+- table:
+    schema: sleeper
+    name: matchup_team
+- table:
+    schema: sleeper
+    name: nfl_team
+- table:
+    schema: sleeper
+    name: player
+- table:
+    schema: sleeper
+    name: player_fantasy_position
+- table:
+    schema: sleeper
+    name: player_trending
+- table:
+    schema: sleeper
+    name: player_week_stat
+- table:
+    schema: sleeper
+    name: playoff_bracket
+- table:
+    schema: sleeper
+    name: playoff_matchup
+- table:
+    schema: sleeper
+    name: roster
+- table:
+    schema: sleeper
+    name: roster_co_owner
+- table:
+    schema: sleeper
+    name: roster_player
+- table:
+    schema: sleeper
+    name: season
+- table:
+    schema: sleeper
+    name: sport
+- table:
+    schema: sleeper
+    name: sport_state
+- table:
+    schema: sleeper
+    name: sync_config
+- table:
+    schema: sleeper
+    name: sync_queue
+- table:
+    schema: sleeper
+    name: traded_draft_pick
+- table:
+    schema: sleeper
+    name: transaction
+- table:
+    schema: sleeper
+    name: transaction_draft_pick
+- table:
+    schema: sleeper
+    name: transaction_player
+- table:
+    schema: sleeper
+    name: transaction_roster
+- table:
+    schema: sleeper
+    name: user
+- table:
+    schema: sleeper
+    name: waiver_claim
+- table:
+    schema: sleeper
+    name: weekly_lineup
+- table:
+    schema: public
+    name: db_version
+# Views
+- table:
+    schema: sleeper
+    name: current_rosters
+- table:
+    schema: sleeper
+    name: draft_results
+- table:
+    schema: sleeper
+    name: league_standings
+- table:
+    schema: sleeper
+    name: player_ownership
+- table:
+    schema: sleeper
+    name: player_stats_summary
+- table:
+    schema: sleeper
+    name: recent_transactions
+- table:
+    schema: sleeper
+    name: roster_composition
+- table:
+    schema: sleeper
+    name: weekly_matchup_results

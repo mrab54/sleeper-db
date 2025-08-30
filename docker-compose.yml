@@ -21,7 +21,7 @@ services:
       - sleeper-net
 
   hasura:
-    image: hasura/graphql-engine:v2.36.0
+    image: hasura/graphql-engine:v2.36.0.cli-migrations-v3
     container_name: sleeper-hasura
     restart: unless-stopped
     depends_on:
@@ -37,6 +37,11 @@ services:
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
       HASURA_GRAPHQL_ENABLE_TELEMETRY: "false"
       HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://${POSTGRES_USER:-sleeper_user}:${POSTGRES_PASSWORD:-sleeper_password}@postgres:5432/${POSTGRES_DB:-sleeper_db}
+      HASURA_GRAPHQL_METADATA_DIR: /hasura-metadata
+      ACTION_SECRET: ${ACTION_SECRET:-changeme}
+    volumes:
+      - ./hasura/metadata:/hasura-metadata:ro
+      - ./hasura/migrations:/hasura-migrations:ro
     networks:
       - sleeper-net
 
@@ -51,30 +56,28 @@ services:
     networks:
       - sleeper-net
 
-  sync:
+  actions:
     build:
-      context: ./sleeper-sync
+      context: ./actions-service
       dockerfile: Dockerfile
-    container_name: sleeper-sync
+    container_name: sleeper-actions
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     ports:
-      - "8082:8080"  # Webhook server port
-      - "9090:9090"  # Metrics port
+      - "8082:8080"
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
-      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-changeme}
-      SLEEPER_DATABASE_HOST: postgres
-      SLEEPER_DATABASE_PORT: 5432
-      SLEEPER_DATABASE_DATABASE: ${POSTGRES_DB:-sleeper_db}
-      SLEEPER_DATABASE_USER: ${POSTGRES_USER:-sleeper_user}
-      SLEEPER_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-sleeper_password}
-    volumes:
-      - ./sleeper-sync/config.yaml:/app/config.yaml:ro
+      PORT: 8080
+      ACTION_SECRET: ${ACTION_SECRET:-changeme}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     networks:
       - sleeper-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 networks:
   sleeper-net:

@@ -12,10 +12,6 @@
 *.dll
 *.so
 *.dylib
-/sleeper-sync
-/sync-service/sleeper-sync
-/sync-service/bin/
-/sync-service/dist/
 
 # Test binary, built with `go test -c`
 *.test
@@ -47,16 +43,6 @@ dist/
 *~
 .DS_Store
 Thumbs.db
-
-# Python (for scripts)
-__pycache__/
-*.py[cod]
-*$py.class
-*.pyc
-.Python
-venv/
-env/
-ENV/
 
 # Database
 *.sql.gz
@@ -113,10 +99,6 @@ Desktop.ini
 *.cer
 ssl/
 
-# API response samples (contains test data)
-docs/research/sample_*.json
-docs/research/api-analysis-raw.json
-
 # Test artifacts
 test-results/
 *.test.json
@@ -135,4 +117,3 @@ site/
 secrets/
 *.secret
 credentials.json
-service-account.jsonScreenshot*.png

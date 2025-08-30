@@ -30,12 +30,12 @@ echo ""
 # Stop all containers first
 echo "1. Stopping all Sleeper DB containers..."
 docker-compose down 2>/dev/null || true
-docker stop sleeper-postgres sleeper-hasura sleeper-docs 2>/dev/null || true
+docker stop sleeper-postgres sleeper-hasura sleeper-docs sleeper-actions 2>/dev/null || true
 echo "   ✓ Done"
 
 # Remove containers
 echo "2. Removing containers..."
-docker rm -f sleeper-postgres sleeper-hasura sleeper-docs 2>/dev/null || true
+docker rm -f sleeper-postgres sleeper-hasura sleeper-docs sleeper-actions 2>/dev/null || true
 echo "   ✓ Done"
 
 # Remove volumes (including data)
@@ -55,8 +55,12 @@ echo "5. Removing Docker images..."
 docker rmi sleeper-db-docs:latest 2>/dev/null || true
 docker rmi $(docker images -q sleeper-db-docs) 2>/dev/null || true
 
+# Remove our custom actions image
+docker rmi sleeper-db-actions:latest 2>/dev/null || true
+docker rmi $(docker images -q sleeper-db-actions) 2>/dev/null || true
+
 # Remove Hasura image
-docker rmi hasura/graphql-engine:v2.36.0 2>/dev/null || true
+docker rmi hasura/graphql-engine:v2.36.0.cli-migrations-v3 2>/dev/null || true
 docker images --filter "reference=hasura/graphql-engine" -q | xargs -r docker rmi -f 2>/dev/null || true
 
 # Remove PostgreSQL image

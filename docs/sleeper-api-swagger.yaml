@@ -1,107 +1,22 @@
 openapi: 3.0.3
 info:
-  title: Sleeper Fantasy Sports API
+  title: Sleeper Fantasy Sports API (Hasura-Optimized)
   description: |
-    The Sleeper API provides read-only access to fantasy sports data, currently supporting NFL.
-    
-    ## Authentication
-    No API token is required. The API is completely open and read-only.
-    
-    ## Rate Limiting
-    Please stay under 1000 API calls per minute to avoid rate limiting.
-    
-    ## Base URL
-    All endpoints use the base URL: `https://api.sleeper.app/v1/`
+    Explicitly named types for clean Hasura import.
+    Each type uses x-graphql-type-name to control GraphQL type names.
   version: "1.0"
-  contact:
-    name: Sleeper Support
-    url: https://docs.sleeper.com
 servers:
   - url: https://api.sleeper.app/v1
     description: Production API server
 
-tags:
-  - name: Users
-    description: User account operations
-  - name: Leagues
-    description: League management and data
-  - name: Drafts
-    description: Draft information and picks
-  - name: Players
-    description: Player data and trending information
-  - name: State
-    description: Current sport state information
-
 paths:
-  /user/{username_or_user_id}:
+  /league/{leagueId}:
     get:
-      tags:
-        - Users
-      summary: Get user information
-      description: Retrieve a user object by username or user_id
-      parameters:
-        - name: username_or_user_id
-          in: path
-          required: true
-          description: Username or user_id of the user
-          schema:
-            type: string
-            example: "JohnDoe123"
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '404':
-          description: User not found
-
-  /user/{user_id}/leagues/{sport}/{season}:
-    get:
-      tags:
-        - Users
-      summary: Get user's leagues
-      description: Get all leagues for a user in a specific sport and season
-      parameters:
-        - name: user_id
-          in: path
-          required: true
-          description: User ID
-          schema:
-            type: string
-        - name: sport
-          in: path
-          required: true
-          description: Sport type (currently only 'nfl' supported)
-          schema:
-            type: string
-            enum: [nfl]
-        - name: season
-          in: path
-          required: true
-          description: Season year
-          schema:
-            type: string
-            example: "2024"
-      responses:
-        '200':
-          description: Array of leagues
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/League'
-
-  /league/{league_id}:
-    get:
-      tags:
-        - Leagues
+      operationId: getLeague
       summary: Get league details
       description: Retrieve detailed information about a specific league
       parameters:
-        - name: league_id
+        - name: leagueId
           in: path
           required: true
           description: League ID
@@ -113,16 +28,118 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/League'
+                type: object
+                x-graphql-type-name: GetLeagueResponse
+                properties:
+                  league_id:
+                    type: string
+                  name:
+                    type: string
+                  avatar:
+                    type: string
+                    nullable: true
+                  sport:
+                    type: string
+                  season:
+                    type: string
+                  status:
+                    type: string
+                    x-graphql-type-name: GetLeagueResponseStatus
+                    enum: [pre_draft, drafting, in_season, complete]
+                  season_type:
+                    type: string
+                  settings:
+                    type: object
+                    x-graphql-type-name: GetLeagueResponseSettings
+                    properties:
+                      max_keepers:
+                        type: integer
+                        nullable: true
+                      draft_rounds:
+                        type: integer
+                        nullable: true
+                      trade_deadline:
+                        type: integer
+                        nullable: true
+                      league_average_match:
+                        type: integer
+                        nullable: true
+                      waiver_type:
+                        type: integer
+                        nullable: true
+                  scoring_settings:
+                    type: object
+                    x-graphql-type-name: GetLeagueResponseScoringSettings
+                    properties:
+                      pass_td:
+                        type: number
+                        nullable: true
+                      pass_yd:
+                        type: number
+                        nullable: true
+                      pass_int:
+                        type: number
+                        nullable: true
+                      rush_td:
+                        type: number
+                        nullable: true
+                      rush_yd:
+                        type: number
+                        nullable: true
+                      rec_td:
+                        type: number
+                        nullable: true
+                      rec_yd:
+                        type: number
+                        nullable: true
+                  roster_positions:
+                    type: array
+                    items:
+                      type: string
+                  total_rosters:
+                    type: integer
+                  draft_id:
+                    type: string
+                    nullable: true
+                  previous_league_id:
+                    type: string
+                    nullable: true
+                  bracket_id:
+                    type: string
+                    nullable: true
+                  loser_bracket_id:
+                    type: string
+                    nullable: true
+                  metadata:
+                    type: object
+                    nullable: true
+                    x-graphql-type-name: GetLeagueResponseMetadata
+                    properties:
+                      latest_league_winner:
+                        type: string
+                        nullable: true
+                      keeper_deadline:
+                        type: string
+                        nullable: true
+                      auto_continue:
+                        type: string
+                        nullable: true
+                  shard:
+                    type: integer
+                  last_message_id:
+                    type: string
+                    nullable: true
+                  last_transaction_id:
+                    type: string
+                    nullable: true
 
-  /league/{league_id}/rosters:
+  /league/{leagueId}/rosters:
     get:
-      tags:
-        - Leagues
+      operationId: getLeagueRosters
       summary: Get league rosters
       description: Retrieve all rosters in a league
       parameters:
-        - name: league_id
+        - name: leagueId
           in: path
           required: true
           description: League ID
@@ -136,16 +153,80 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Roster'
+                  type: object
+                  x-graphql-type-name: LeagueRoster
+                  properties:
+                    roster_id:
+                      type: integer
+                    owner_id:
+                      type: string
+                      nullable: true
+                    co_owners:
+                      type: array
+                      items:
+                        type: string
+                      nullable: true
+                    league_id:
+                      type: string
+                    players:
+                      type: array
+                      items:
+                        type: string
+                      nullable: true
+                    starters:
+                      type: array
+                      items:
+                        type: string
+                      nullable: true
+                    reserve:
+                      type: array
+                      items:
+                        type: string
+                      nullable: true
+                    taxi:
+                      type: array
+                      items:
+                        type: string
+                      nullable: true
+                    keepers:
+                      type: array
+                      items:
+                        type: string
+                      nullable: true
+                    metadata:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: LeagueRosterMetadata
+                      properties: {}
+                    settings:
+                      type: object
+                      x-graphql-type-name: LeagueRosterSettings
+                      properties:
+                        wins:
+                          type: integer
+                        losses:
+                          type: integer
+                        ties:
+                          type: integer
+                        total_moves:
+                          type: integer
+                        waiver_position:
+                          type: integer
+                        waiver_budget_used:
+                          type: integer
+                        fpts:
+                          type: number
+                        fpts_against:
+                          type: number
+                          nullable: true
 
-  /league/{league_id}/users:
+  /league/{leagueId}/users:
     get:
-      tags:
-        - Leagues
+      operationId: getLeagueUsers
       summary: Get league users
       description: Retrieve all users in a league
       parameters:
-        - name: league_id
+        - name: leagueId
           in: path
           required: true
           description: League ID
@@ -159,16 +240,40 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/User'
+                  type: object
+                  x-graphql-type-name: LeagueUser
+                  properties:
+                    user_id:
+                      type: string
+                    username:
+                      type: string
+                      nullable: true
+                    display_name:
+                      type: string
+                    avatar:
+                      type: string
+                      nullable: true
+                    is_bot:
+                      type: boolean
+                    is_owner:
+                      type: boolean
+                    league_id:
+                      type: string
+                    metadata:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: LeagueUserMetadata
+                      properties:
+                        team_name:
+                          type: string
 
-  /league/{league_id}/matchups/{week}:
+  /league/{leagueId}/matchups/{week}:
     get:
-      tags:
-        - Leagues
+      operationId: getLeagueMatchups
       summary: Get league matchups
       description: Retrieve matchups for a specific week
       parameters:
-        - name: league_id
+        - name: leagueId
           in: path
           required: true
           description: League ID
@@ -177,7 +282,7 @@ paths:
         - name: week
           in: path
           required: true
-          description: Week number (1-18 for regular season + playoffs)
+          description: Week number (1-18)
           schema:
             type: integer
             minimum: 1
@@ -190,62 +295,43 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Matchup'
+                  type: object
+                  x-graphql-type-name: LeagueMatchup
+                  properties:
+                    roster_id:
+                      type: integer
+                    matchup_id:
+                      type: integer
+                    points:
+                      type: number
+                    custom_points:
+                      type: number
+                      nullable: true
+                    players:
+                      type: array
+                      items:
+                        type: string
+                    starters:
+                      type: array
+                      items:
+                        type: string
+                    players_points:
+                      type: object
+                      x-graphql-type-name: LeagueMatchupPlayersPoints
+                      additionalProperties:
+                        type: number
+                    starters_points:
+                      type: array
+                      items:
+                        type: number
 
-  /league/{league_id}/winners_bracket:
+  /league/{leagueId}/transactions/{round}:
     get:
-      tags:
-        - Leagues
-      summary: Get playoff winners bracket
-      description: Retrieve the winners bracket for playoffs
-      parameters:
-        - name: league_id
-          in: path
-          required: true
-          description: League ID
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Winners bracket information
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PlayoffMatchup'
-
-  /league/{league_id}/losers_bracket:
-    get:
-      tags:
-        - Leagues
-      summary: Get playoff losers bracket
-      description: Retrieve the losers bracket for playoffs
-      parameters:
-        - name: league_id
-          in: path
-          required: true
-          description: League ID
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Losers bracket information
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PlayoffMatchup'
-
-  /league/{league_id}/transactions/{round}:
-    get:
-      tags:
-        - Leagues
+      operationId: getLeagueTransactions
       summary: Get league transactions
       description: Retrieve transactions for a specific round/week
       parameters:
-        - name: league_id
+        - name: leagueId
           in: path
           required: true
           description: League ID
@@ -265,39 +351,116 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Transaction'
+                  type: object
+                  x-graphql-type-name: LeagueTransaction
+                  properties:
+                    transaction_id:
+                      type: string
+                    type:
+                      type: string
+                      x-graphql-type-name: LeagueTransactionType
+                      enum: [trade, waiver, free_agent, commissioner]
+                    status:
+                      type: string
+                      x-graphql-type-name: LeagueTransactionStatus
+                      enum: [complete, pending, failed]
+                    roster_ids:
+                      type: array
+                      items:
+                        type: integer
+                    adds:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: LeagueTransactionAdds
+                      additionalProperties:
+                        type: integer
+                    drops:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: LeagueTransactionDrops
+                      additionalProperties:
+                        type: integer
+                    draft_picks:
+                      type: array
+                      items:
+                        type: object
+                        x-graphql-type-name: LeagueTransactionDraftPick
+                        properties: {}
+                      nullable: true
+                    waiver_budget:
+                      type: array
+                      items:
+                        type: object
+                        x-graphql-type-name: LeagueTransactionWaiverBudget
+                        properties: {}
+                      nullable: true
+                    creator:
+                      type: string
+                    created:
+                      type: integer
+                      format: int64
+                    status_updated:
+                      type: integer
+                      format: int64
+                    leg:
+                      type: integer
+                    metadata:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: LeagueTransactionMetadata
+                      properties: {}
 
-  /league/{league_id}/traded_picks:
+  /user/{usernameOrUserId}:
     get:
-      tags:
-        - Leagues
-      summary: Get traded draft picks
-      description: Retrieve all traded draft picks in the league
+      operationId: getUser
+      summary: Get user information
+      description: Retrieve a user object by username or user_id
       parameters:
-        - name: league_id
+        - name: usernameOrUserId
           in: path
           required: true
-          description: League ID
+          description: Username or user_id of the user
           schema:
             type: string
       responses:
         '200':
-          description: Array of traded picks
+          description: User details
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TradedPick'
+                type: object
+                x-graphql-type-name: GetUserResponse
+                properties:
+                  user_id:
+                    type: string
+                  username:
+                    type: string
+                    nullable: true
+                  display_name:
+                    type: string
+                  avatar:
+                    type: string
+                    nullable: true
+                  is_bot:
+                    type: boolean
+                  metadata:
+                    type: object
+                    nullable: true
+                    x-graphql-type-name: GetUserResponseMetadata
+                    properties: {}
+                  settings:
+                    type: object
+                    nullable: true
+                    x-graphql-type-name: GetUserResponseSettings
+                    properties: {}
 
-  /user/{user_id}/drafts/{sport}/{season}:
+  /user/{userId}/leagues/{sport}/{season}:
     get:
-      tags:
-        - Drafts
-      summary: Get user's drafts
-      description: Retrieve all drafts for a user in a specific sport and season
+      operationId: getUserLeagues
+      summary: Get user's leagues
+      description: Get all leagues for a user in a specific sport and season
       parameters:
-        - name: user_id
+        - name: userId
           in: path
           required: true
           description: User ID
@@ -306,7 +469,7 @@ paths:
         - name: sport
           in: path
           required: true
-          description: Sport type
+          description: Sport type (nfl)
           schema:
             type: string
             enum: [nfl]
@@ -318,108 +481,104 @@ paths:
             type: string
       responses:
         '200':
-          description: Array of drafts
+          description: Array of leagues
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Draft'
+                  type: object
+                  x-graphql-type-name: UserLeague
+                  properties:
+                    league_id:
+                      type: string
+                    name:
+                      type: string
+                    avatar:
+                      type: string
+                      nullable: true
+                    sport:
+                      type: string
+                    season:
+                      type: string
+                    status:
+                      type: string
+                      x-graphql-type-name: UserLeagueStatus
+                      enum: [pre_draft, drafting, in_season, complete]
+                    season_type:
+                      type: string
+                    settings:
+                      type: object
+                      x-graphql-type-name: UserLeagueSettings
+                      properties: {}
+                    scoring_settings:
+                      type: object
+                      x-graphql-type-name: UserLeagueScoringSettings
+                      properties: {}
+                    roster_positions:
+                      type: array
+                      items:
+                        type: string
+                    total_rosters:
+                      type: integer
+                    draft_id:
+                      type: string
+                      nullable: true
+                    previous_league_id:
+                      type: string
+                      nullable: true
+                    metadata:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: UserLeagueMetadata
+                      properties: {}
 
-  /league/{league_id}/drafts:
+  /state/{sport}:
     get:
-      tags:
-        - Drafts
-      summary: Get league drafts
-      description: Retrieve all drafts for a league
+      operationId: getSportState
+      summary: Get current sport state
+      description: Retrieve the current state of the sport including week and season
       parameters:
-        - name: league_id
+        - name: sport
           in: path
           required: true
-          description: League ID
+          description: Sport type
           schema:
             type: string
+            enum: [nfl]
       responses:
         '200':
-          description: Array of drafts
+          description: Current sport state
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Draft'
-
-  /draft/{draft_id}:
-    get:
-      tags:
-        - Drafts
-      summary: Get draft details
-      description: Retrieve detailed information about a specific draft
-      parameters:
-        - name: draft_id
-          in: path
-          required: true
-          description: Draft ID
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Draft details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Draft'
-
-  /draft/{draft_id}/picks:
-    get:
-      tags:
-        - Drafts
-      summary: Get draft picks
-      description: Retrieve all picks from a draft
-      parameters:
-        - name: draft_id
-          in: path
-          required: true
-          description: Draft ID
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Array of draft picks
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DraftPick'
-
-  /draft/{draft_id}/traded_picks:
-    get:
-      tags:
-        - Drafts
-      summary: Get traded draft picks
-      description: Retrieve traded picks for a draft
-      parameters:
-        - name: draft_id
-          in: path
-          required: true
-          description: Draft ID
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Array of traded picks
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TradedPick'
+                type: object
+                x-graphql-type-name: GetSportStateResponse
+                properties:
+                  week:
+                    type: integer
+                  season_type:
+                    type: string
+                  season:
+                    type: string
+                  display_week:
+                    type: integer
+                  leg:
+                    type: integer
+                  league_season:
+                    type: string
+                  league_create_season:
+                    type: string
+                  previous_season:
+                    type: string
+                  season_start_date:
+                    type: string
+                  season_has_scores:
+                    type: boolean
 
   /players/{sport}:
     get:
-      tags:
-        - Players
+      operationId: getPlayers
       summary: Get all players
       description: Retrieve all players for a sport (large response, should be cached)
       parameters:
@@ -437,13 +596,62 @@ paths:
             application/json:
               schema:
                 type: object
+                x-graphql-type-name: GetPlayersResponse
                 additionalProperties:
-                  $ref: '#/components/schemas/Player'
+                  type: object
+                  x-graphql-type-name: GetPlayersResponsePlayer
+                  properties:
+                    player_id:
+                      type: string
+                    first_name:
+                      type: string
+                      nullable: true
+                    last_name:
+                      type: string
+                      nullable: true
+                    full_name:
+                      type: string
+                      nullable: true
+                    position:
+                      type: string
+                      nullable: true
+                    team:
+                      type: string
+                      nullable: true
+                    status:
+                      type: string
+                      nullable: true
+                    injury_status:
+                      type: string
+                      nullable: true
+                    active:
+                      type: boolean
+                    years_exp:
+                      type: integer
+                      nullable: true
+                    age:
+                      type: integer
+                      nullable: true
+                    height:
+                      type: string
+                      nullable: true
+                    weight:
+                      type: string
+                      nullable: true
+                    college:
+                      type: string
+                      nullable: true
+                    fantasy_positions:
+                      type: array
+                      items:
+                        type: string
+                      nullable: true
+                    sport:
+                      type: string
 
   /players/{sport}/trending/{type}:
     get:
-      tags:
-        - Players
+      operationId: getTrendingPlayers
       summary: Get trending players
       description: Retrieve trending players based on adds/drops
       parameters:
@@ -470,20 +678,171 @@ paths:
                 type: array
                 items:
                   type: object
+                  x-graphql-type-name: TrendingPlayer
                   properties:
                     player_id:
                       type: string
                     count:
                       type: integer
-                      description: Number of adds/drops
 
-  /state/{sport}:
+  /draft/{draftId}:
     get:
-      tags:
-        - State
-      summary: Get current sport state
-      description: Retrieve the current state of the sport including week and season
+      operationId: getDraft
+      summary: Get draft details
+      description: Retrieve detailed information about a specific draft
       parameters:
+        - name: draftId
+          in: path
+          required: true
+          description: Draft ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Draft details
+          content:
+            application/json:
+              schema:
+                type: object
+                x-graphql-type-name: GetDraftResponse
+                properties:
+                  draft_id:
+                    type: string
+                  league_id:
+                    type: string
+                  type:
+                    type: string
+                    x-graphql-type-name: GetDraftResponseType
+                    enum: [snake, linear, auction]
+                  status:
+                    type: string
+                    x-graphql-type-name: GetDraftResponseStatus
+                    enum: [pre_draft, drafting, paused, complete]
+                  sport:
+                    type: string
+                  season:
+                    type: string
+                  season_type:
+                    type: string
+                  settings:
+                    type: object
+                    x-graphql-type-name: GetDraftResponseSettings
+                    properties:
+                      rounds:
+                        type: integer
+                      teams:
+                        type: integer
+                      slots_wr:
+                        type: integer
+                      slots_rb:
+                        type: integer
+                      slots_qb:
+                        type: integer
+                      slots_te:
+                        type: integer
+                      slots_flex:
+                        type: integer
+                      slots_super_flex:
+                        type: integer
+                      slots_bn:
+                        type: integer
+                      pick_timer:
+                        type: integer
+                  start_time:
+                    type: integer
+                    format: int64
+                    nullable: true
+                  slot_to_roster_id:
+                    type: object
+                    x-graphql-type-name: GetDraftResponseSlotToRosterId
+                    additionalProperties:
+                      type: integer
+                  draft_order:
+                    type: object
+                    nullable: true
+                    x-graphql-type-name: GetDraftResponseDraftOrder
+                    additionalProperties:
+                      type: integer
+                  metadata:
+                    type: object
+                    nullable: true
+                    x-graphql-type-name: GetDraftResponseMetadata
+                    properties: {}
+                  created:
+                    type: integer
+                    format: int64
+                  last_picked:
+                    type: integer
+                    format: int64
+                    nullable: true
+
+  /draft/{draftId}/picks:
+    get:
+      operationId: getDraftPicks
+      summary: Get draft picks
+      description: Retrieve all picks from a draft
+      parameters:
+        - name: draftId
+          in: path
+          required: true
+          description: Draft ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of draft picks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  x-graphql-type-name: DraftPick
+                  properties:
+                    round:
+                      type: integer
+                    roster_id:
+                      type: integer
+                    player_id:
+                      type: string
+                    picked_by:
+                      type: string
+                    pick_no:
+                      type: integer
+                    draft_id:
+                      type: string
+                    draft_slot:
+                      type: integer
+                    is_keeper:
+                      type: boolean
+                      nullable: true
+                    metadata:
+                      type: object
+                      x-graphql-type-name: DraftPickMetadata
+                      properties:
+                        amount:
+                          type: string
+                        first_name:
+                          type: string
+                        last_name:
+                          type: string
+                        position:
+                          type: string
+                        team:
+                          type: string
+
+  /user/{userId}/drafts/{sport}/{season}:
+    get:
+      operationId: getUserDrafts
+      summary: Get user's drafts
+      description: Retrieve all drafts for a user in a specific sport and season
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
         - name: sport
           in: path
           required: true
@@ -491,991 +850,280 @@ paths:
           schema:
             type: string
             enum: [nfl]
+        - name: season
+          in: path
+          required: true
+          description: Season year
+          schema:
+            type: string
       responses:
         '200':
-          description: Current sport state
+          description: Array of drafts
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SportState'
+                type: array
+                items:
+                  type: object
+                  x-graphql-type-name: UserDraft
+                  properties:
+                    draft_id:
+                      type: string
+                    league_id:
+                      type: string
+                    type:
+                      type: string
+                      x-graphql-type-name: UserDraftType
+                      enum: [snake, linear, auction]
+                    status:
+                      type: string
+                      x-graphql-type-name: UserDraftStatus
+                      enum: [pre_draft, drafting, paused, complete]
+                    sport:
+                      type: string
+                    season:
+                      type: string
+                    season_type:
+                      type: string
+                    settings:
+                      type: object
+                      x-graphql-type-name: UserDraftSettings
+                      properties: {}
+                    start_time:
+                      type: integer
+                      format: int64
+                      nullable: true
+                    metadata:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: UserDraftMetadata
+                      properties: {}
 
-components:
-  schemas:
-    User:
-      type: object
-      properties:
-        user_id:
-          type: string
-          description: Unique user identifier
-        username:
-          type: string
-          nullable: true
-          description: User's username
-        display_name:
-          type: string
-          description: User's display name
-        avatar:
-          type: string
-          nullable: true
-          description: Avatar ID or URL
-        is_bot:
-          type: boolean
-          description: Whether user is a bot
-        is_owner:
-          type: boolean
-          description: Whether user is league owner (in league context)
-        league_id:
-          type: string
-          description: League ID (when returned from league endpoints)
-        metadata:
-          type: object
-          nullable: true
-          description: Additional user metadata
-          properties:
-            team_name:
-              type: string
-              description: User's team name in the league
-            avatar:
-              type: string
-              description: Custom avatar URL
-            allow_pn:
-              type: string
-              description: Push notification preference
-            allow_sms:
-              type: string
-              description: SMS notification preference
-            mention_pn:
-              type: string
-              description: Mention notification preference
-        settings:
-          type: object
-          nullable: true
-          description: User settings
-        email:
-          type: string
-          nullable: true
-          description: User email
-        phone:
-          type: string
-          nullable: true
-          description: User phone
-        real_name:
-          type: string
-          nullable: true
-          description: User's real name
-        created:
-          type: string
-          nullable: true
-          description: Account creation timestamp
-        verification:
-          type: string
-          nullable: true
-          description: Verification status
-        cookies:
-          type: string
-          nullable: true
-          description: User cookies
-        currencies:
-          type: object
-          nullable: true
-          description: User currencies
-        data_updated:
-          type: string
-          nullable: true
-          description: When user data was last updated
-        deleted:
-          type: string
-          nullable: true
-          description: Deletion timestamp if applicable
-        notifications:
-          type: object
-          nullable: true
-          description: User notification settings
-        pending:
-          type: string
-          nullable: true
-          description: Pending status
-        solicitable:
-          type: string
-          nullable: true
-          description: Whether user can be solicited
-        summoner_name:
-          type: string
-          nullable: true
-          description: Summoner name for gaming
-        summoner_region:
-          type: string
-          nullable: true
-          description: Summoner region
-        token:
-          type: string
-          nullable: true
-          description: User token
+  /league/{leagueId}/winners_bracket:
+    get:
+      operationId: getLeagueWinnersBracket
+      summary: Get playoff winners bracket
+      description: Retrieve the winners bracket for playoffs
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          description: League ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Winners bracket information
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  x-graphql-type-name: WinnersBracketMatchup
+                  properties:
+                    r:
+                      type: integer
+                    m:
+                      type: integer
+                    t1:
+                      type: integer
+                      nullable: true
+                    t2:
+                      type: integer
+                      nullable: true
+                    w:
+                      type: integer
+                      nullable: true
+                    l:
+                      type: integer
+                      nullable: true
+                    t1_from:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: WinnersBracketMatchupT1From
+                      properties: {}
+                    t2_from:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: WinnersBracketMatchupT2From
+                      properties: {}
 
-    League:
-      type: object
-      properties:
-        league_id:
-          type: string
-          description: Unique league identifier
-        name:
-          type: string
-          description: League name
-        avatar:
-          type: string
-          nullable: true
-          description: League avatar
-        sport:
-          type: string
-          description: Sport type (e.g., nfl)
-        season:
-          type: string
-          description: Season year
-        status:
-          type: string
-          enum: [pre_draft, drafting, in_season, complete]
-          description: League status
-        season_type:
-          type: string
-          description: Season type (regular, playoff, etc.)
-        settings:
-          type: object
-          description: League settings including scoring, roster positions, etc.
-        scoring_settings:
-          type: object
-          description: Detailed scoring settings
-        roster_positions:
-          type: array
-          items:
+  /league/{leagueId}/losers_bracket:
+    get:
+      operationId: getLeagueLosersBracket
+      summary: Get playoff losers bracket
+      description: Retrieve the losers bracket for playoffs
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          description: League ID
+          schema:
             type: string
-          description: Available roster positions (QB, RB, WR, TE, FLEX, BN, etc.)
-        total_rosters:
-          type: integer
-          description: Number of teams in league
-        draft_id:
-          type: string
-          nullable: true
-          description: Associated draft ID
-        previous_league_id:
-          type: string
-          nullable: true
-          description: Previous season's league ID
-        bracket_id:
-          type: string
-          nullable: true
-          description: Playoff bracket ID
-        loser_bracket_id:
-          type: string
-          nullable: true
-          description: Loser bracket ID
-        bracket_overrides_id:
-          type: string
-          nullable: true
-          description: Bracket overrides ID
-        loser_bracket_overrides_id:
-          type: string
-          nullable: true
-          description: Loser bracket overrides ID
-        group_id:
-          type: string
-          nullable: true
-          description: Group ID for league
-        metadata:
-          type: object
-          nullable: true
-          description: Additional league metadata
-        company_id:
-          type: string
-          nullable: true
-          description: Company ID
-        shard:
-          type: integer
-          description: Database shard number
-        last_message_id:
-          type: string
-          nullable: true
-          description: ID of last message in league chat
-        last_message_time:
-          type: integer
-          format: int64
-          nullable: true
-          description: Timestamp of last message
-        last_message_text_map:
-          type: object
-          nullable: true
-          description: Text map of last message
-        last_message_attachment:
-          type: string
-          nullable: true
-          description: Attachment of last message
-        last_author_id:
-          type: string
-          nullable: true
-          description: User ID of last message author
-        last_author_display_name:
-          type: string
-          nullable: true
-          description: Display name of last message author
-        last_author_avatar:
-          type: string
-          nullable: true
-          description: Avatar of last message author
-        last_author_is_bot:
-          type: boolean
-          description: Whether last author is a bot
-        last_pinned_message_id:
-          type: string
-          nullable: true
-          description: ID of last pinned message
-        last_read_id:
-          type: string
-          nullable: true
-          description: ID of last read message
-        display_order:
-          type: integer
-          nullable: true
-          description: Display order for the league
-        last_transaction_id:
-          type: string
-          nullable: true
-          description: ID of last transaction in league
+      responses:
+        '200':
+          description: Losers bracket information
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  x-graphql-type-name: LosersBracketMatchup
+                  properties:
+                    r:
+                      type: integer
+                    m:
+                      type: integer
+                    t1:
+                      type: integer
+                      nullable: true
+                    t2:
+                      type: integer
+                      nullable: true
+                    w:
+                      type: integer
+                      nullable: true
+                    l:
+                      type: integer
+                      nullable: true
+                    t1_from:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: LosersBracketMatchupT1From
+                      properties: {}
+                    t2_from:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: LosersBracketMatchupT2From
+                      properties: {}
 
-    Roster:
-      type: object
-      properties:
-        roster_id:
-          type: integer
-          description: Roster identifier within the league
-        owner_id:
-          type: string
-          nullable: true
-          description: User ID of the roster owner
-        co_owners:
-          type: array
-          items:
+  /league/{leagueId}/traded_picks:
+    get:
+      operationId: getLeagueTradedPicks
+      summary: Get traded draft picks
+      description: Retrieve all traded draft picks in the league
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          description: League ID
+          schema:
             type: string
-          nullable: true
-          description: Co-owner user IDs
-        league_id:
-          type: string
-          description: League ID this roster belongs to
-        players:
-          type: array
-          items:
-            type: string
-          nullable: true
-          description: Array of player IDs on roster
-        starters:
-          type: array
-          items:
-            type: string
-          nullable: true
-          description: Array of starting player IDs
-        reserve:
-          type: array
-          items:
-            type: string
-          nullable: true
-          description: Reserve/IR player IDs
-        taxi:
-          type: array
-          items:
-            type: string
-          nullable: true
-          description: Taxi squad player IDs
-        keepers:
-          type: array
-          items:
-            type: string
-          nullable: true
-          description: Keeper player IDs
-        player_map:
-          type: object
-          nullable: true
-          description: Map of player-specific settings
-        metadata:
-          type: object
-          nullable: true
-          description: Roster metadata (team name, notification settings, etc.)
-          properties:
-            p_nick_*:
-              type: string
-              description: Player nickname (dynamic keys like p_nick_1234)
-            allow_pn_inactive_starters:
-              type: string
-              description: Push notification for inactive starters
-            allow_pn_player_injury_status:
-              type: string
-              description: Push notification for player injuries
-            allow_pn_scoring:
-              type: string
-              description: Push notification for scoring
-            restrict_pn_scoring_starters_only:
-              type: string
-              description: Restrict scoring notifications to starters only
-        settings:
-          type: object
-          description: Roster-specific settings
-          properties:
-            wins:
-              type: integer
-              description: Number of wins
-            losses:
-              type: integer
-              description: Number of losses
-            ties:
-              type: integer
-              description: Number of ties
-            total_moves:
-              type: integer
-              description: Total roster moves made
-            waiver_position:
-              type: integer
-              description: Current waiver wire position
-            waiver_budget_used:
-              type: integer
-              description: Amount of waiver budget used
-            fpts:
-              type: number
-              description: Total fantasy points
-            fpts_against:
-              type: number
-              nullable: true
-              description: Total fantasy points against
-            fpts_decimal:
-              type: number
-              nullable: true
-              description: Decimal portion of fantasy points
-            fpts_against_decimal:
-              type: number
-              nullable: true
-              description: Decimal portion of fantasy points against
+      responses:
+        '200':
+          description: Array of traded picks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  x-graphql-type-name: LeagueTradedPick
+                  properties:
+                    season:
+                      type: string
+                    round:
+                      type: integer
+                    owner_id:
+                      type: integer
+                    previous_owner_id:
+                      type: integer
+                    roster_id:
+                      type: integer
+                    draft_id:
+                      type: integer
+                      nullable: true
 
-    Matchup:
-      type: object
-      properties:
-        roster_id:
-          type: integer
-          description: Roster ID in the matchup
-        matchup_id:
-          type: integer
-          description: Matchup identifier for pairing opponents
-        points:
-          type: number
-          description: Total points scored
-        custom_points:
-          type: number
-          nullable: true
-          description: Custom scoring points
-        players:
-          type: array
-          items:
+  /league/{leagueId}/drafts:
+    get:
+      operationId: getLeagueDrafts
+      summary: Get league drafts
+      description: Retrieve all drafts for a league
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          description: League ID
+          schema:
             type: string
-          description: Player IDs used in matchup
-        starters:
-          type: array
-          items:
+      responses:
+        '200':
+          description: Array of drafts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  x-graphql-type-name: LeagueDraft
+                  properties:
+                    draft_id:
+                      type: string
+                    league_id:
+                      type: string
+                    type:
+                      type: string
+                      x-graphql-type-name: LeagueDraftType
+                      enum: [snake, linear, auction]
+                    status:
+                      type: string
+                      x-graphql-type-name: LeagueDraftStatus
+                      enum: [pre_draft, drafting, paused, complete]
+                    sport:
+                      type: string
+                    season:
+                      type: string
+                    season_type:
+                      type: string
+                    settings:
+                      type: object
+                      x-graphql-type-name: LeagueDraftSettings
+                      properties: {}
+                    start_time:
+                      type: integer
+                      format: int64
+                      nullable: true
+                    metadata:
+                      type: object
+                      nullable: true
+                      x-graphql-type-name: LeagueDraftMetadata
+                      properties: {}
+
+  /draft/{draftId}/traded_picks:
+    get:
+      operationId: getDraftTradedPicks
+      summary: Get traded draft picks
+      description: Retrieve traded picks for a draft
+      parameters:
+        - name: draftId
+          in: path
+          required: true
+          description: Draft ID
+          schema:
             type: string
-          description: Starting player IDs
-        players_points:
-          type: object
-          additionalProperties:
-            type: number
-          description: Points for each player (keyed by player_id)
-        starters_points:
-          type: array
-          items:
-            type: number
-          description: Points for each starter position
-
-    PlayoffMatchup:
-      type: object
-      properties:
-        r:
-          type: integer
-          description: Round number
-        m:
-          type: integer
-          description: Matchup number
-        t1:
-          type: integer
-          nullable: true
-          description: Team 1 roster ID
-        t2:
-          type: integer
-          nullable: true
-          description: Team 2 roster ID
-        w:
-          type: integer
-          nullable: true
-          description: Winner roster ID
-        l:
-          type: integer
-          nullable: true
-          description: Loser roster ID
-        t1_from:
-          type: object
-          nullable: true
-          description: Where team 1 came from (contains 'w' or 'l' and matchup)
-        t2_from:
-          type: object
-          nullable: true
-          description: Where team 2 came from (contains 'w' or 'l' and matchup)
-
-    Transaction:
-      type: object
-      properties:
-        transaction_id:
-          type: string
-          description: Unique transaction identifier
-        type:
-          type: string
-          enum: [trade, waiver, free_agent, commissioner]
-          description: Transaction type
-        status:
-          type: string
-          enum: [complete, pending, failed]
-          description: Transaction status
-        roster_ids:
-          type: array
-          items:
-            type: integer
-          description: Rosters involved in transaction
-        adds:
-          type: object
-          nullable: true
-          additionalProperties:
-            type: integer
-          description: Players added (player_id -> roster_id)
-        drops:
-          type: object
-          nullable: true
-          additionalProperties:
-            type: integer
-          description: Players dropped (player_id -> roster_id)
-        draft_picks:
-          type: array
-          items:
-            type: object
-          description: Draft picks involved
-        waiver_budget:
-          type: array
-          items:
-            type: object
-          description: Waiver budget amounts
-        consenter_ids:
-          type: array
-          items:
-            type: integer
-          description: Rosters that need to consent
-        creator:
-          type: string
-          description: User ID who created the transaction
-        created:
-          type: integer
-          format: int64
-          description: Unix timestamp of creation (milliseconds)
-        status_updated:
-          type: integer
-          format: int64
-          description: Unix timestamp when status was last updated (milliseconds)
-        leg:
-          type: integer
-          description: Week/leg of transaction
-        metadata:
-          type: object
-          nullable: true
-          description: Additional transaction metadata
-        settings:
-          type: object
-          nullable: true
-          description: Transaction settings
-
-    TradedPick:
-      type: object
-      properties:
-        season:
-          type: string
-          description: Season year
-        round:
-          type: integer
-          description: Draft round
-        owner_id:
-          type: integer
-          description: Current owner roster ID
-        previous_owner_id:
-          type: integer
-          description: Previous owner roster ID
-        roster_id:
-          type: integer
-          description: Original roster ID
-        draft_id:
-          type: integer
-          nullable: true
-          description: Draft ID (when returned from draft endpoints)
-
-    Draft:
-      type: object
-      properties:
-        draft_id:
-          type: string
-          description: Unique draft identifier
-        league_id:
-          type: string
-          description: Associated league ID
-        type:
-          type: string
-          enum: [snake, linear, auction]
-          description: Draft type
-        status:
-          type: string
-          enum: [pre_draft, drafting, paused, complete]
-          description: Draft status
-        sport:
-          type: string
-          description: Sport type
-        season:
-          type: string
-          description: Season year
-        season_type:
-          type: string
-          description: Season type (regular, etc.)
-        settings:
-          type: object
-          description: Draft settings
-          properties:
-            rounds:
-              type: integer
-              description: Number of draft rounds
-            teams:
-              type: integer
-              description: Number of teams
-            slots_wr:
-              type: integer
-              description: WR roster slots
-            slots_rb:
-              type: integer
-              description: RB roster slots
-            slots_qb:
-              type: integer
-              description: QB roster slots
-            slots_te:
-              type: integer
-              description: TE roster slots
-            slots_flex:
-              type: integer
-              description: FLEX roster slots
-            slots_super_flex:
-              type: integer
-              description: Super FLEX roster slots
-            slots_bn:
-              type: integer
-              description: Bench roster slots
-            pick_timer:
-              type: integer
-              description: Seconds per pick
-            alpha_sort:
-              type: integer
-              description: Whether players are alpha sorted
-            autopause_enabled:
-              type: integer
-              description: Whether autopause is enabled
-            autopause_start_time:
-              type: integer
-              description: Autopause start time
-            autopause_end_time:
-              type: integer
-              description: Autopause end time
-            autostart:
-              type: integer
-              description: Whether draft autostarts
-            cpu_autopick:
-              type: integer
-              description: Whether CPU autopicks
-            enforce_position_limits:
-              type: integer
-              description: Whether position limits are enforced
-            nomination_timer:
-              type: integer
-              description: Nomination timer for auction drafts
-            player_type:
-              type: integer
-              description: Type of players in draft
-            reversal_round:
-              type: integer
-              description: Round where snake reverses
-        start_time:
-          type: integer
-          format: int64
-          nullable: true
-          description: Unix timestamp of draft start
-        slot_to_roster_id:
-          type: object
-          additionalProperties:
-            type: integer
-          description: Maps draft slots to roster IDs
-        draft_order:
-          type: object
-          additionalProperties:
-            type: integer
-          nullable: true
-          description: Maps user IDs to draft slots
-        metadata:
-          type: object
-          nullable: true
-          description: Additional draft metadata
-          properties:
-            name:
-              type: string
-              description: Draft name
-            description:
-              type: string
-              description: Draft description
-            scoring_type:
-              type: string
-              description: Scoring type for draft
-        created:
-          type: integer
-          format: int64
-          description: Unix timestamp when draft was created
-        creators:
-          type: array
-          items:
-            type: string
-          description: User IDs who created the draft
-        last_picked:
-          type: integer
-          format: int64
-          description: Unix timestamp of last pick
-        last_message_id:
-          type: string
-          nullable: true
-          description: ID of last message in draft chat
-        last_message_time:
-          type: integer
-          format: int64
-          nullable: true
-          description: Unix timestamp of last message
-
-    DraftPick:
-      type: object
-      properties:
-        round:
-          type: integer
-          description: Draft round
-        roster_id:
-          type: integer
-          description: Roster that made the pick
-        player_id:
-          type: string
-          description: Player ID selected
-        picked_by:
-          type: string
-          description: User ID who made the pick
-        pick_no:
-          type: integer
-          description: Overall pick number
-        draft_id:
-          type: string
-          description: Draft ID this pick belongs to
-        draft_slot:
-          type: integer
-          description: Draft slot that made the pick
-        is_keeper:
-          type: boolean
-          nullable: true
-          description: Whether this was a keeper pick
-        reactions:
-          type: object
-          nullable: true
-          description: Reactions to this pick
-        metadata:
-          type: object
-          description: Pick metadata including player details
-          properties:
-            amount:
-              type: string
-              description: Auction amount (for auction drafts)
-            first_name:
-              type: string
-              description: Player's first name
-            last_name:
-              type: string
-              description: Player's last name
-            position:
-              type: string
-              description: Player's position
-            team:
-              type: string
-              description: Player's NFL team
-            status:
-              type: string
-              description: Player's status
-            injury_status:
-              type: string
-              description: Player's injury status
-            years_exp:
-              type: string
-              description: Years of experience
-            number:
-              type: string
-              description: Jersey number
-            sport:
-              type: string
-              description: Sport
-            team_abbr:
-              type: string
-              description: Team abbreviation
-            team_changed_at:
-              type: string
-              description: When team changed
-            news_updated:
-              type: string
-              description: When news was last updated
-
-    Player:
-      type: object
-      properties:
-        player_id:
-          type: string
-          description: Unique player identifier
-        first_name:
-          type: string
-          nullable: true
-          description: Player's first name
-        last_name:
-          type: string
-          nullable: true
-          description: Player's last name
-        full_name:
-          type: string
-          nullable: true
-          description: Player's full name
-        search_full_name:
-          type: string
-          nullable: true
-          description: Searchable version of name
-        search_first_name:
-          type: string
-          nullable: true
-          description: Searchable first name
-        search_last_name:
-          type: string
-          nullable: true
-          description: Searchable last name
-        search_rank:
-          type: integer
-          nullable: true
-          description: Search ranking
-        position:
-          type: string
-          nullable: true
-          description: Player position (QB, RB, WR, TE, K, DEF, etc.)
-        team:
-          type: string
-          nullable: true
-          description: NFL team abbreviation
-        team_abbr:
-          type: string
-          nullable: true
-          description: Team abbreviation (duplicate field)
-        team_changed_at:
-          type: string
-          nullable: true
-          description: When player changed teams
-        status:
-          type: string
-          nullable: true
-          description: Player status (Active, Injured Reserve, etc.)
-        injury_status:
-          type: string
-          nullable: true
-          description: Injury designation (Questionable, Out, etc.)
-        injury_body_part:
-          type: string
-          nullable: true
-          description: Injured body part
-        injury_notes:
-          type: string
-          nullable: true
-          description: Injury notes
-        injury_start_date:
-          type: string
-          nullable: true
-          description: When injury started
-        practice_participation:
-          type: string
-          nullable: true
-          description: Practice participation status
-        practice_description:
-          type: string
-          nullable: true
-          description: Practice participation description
-        active:
-          type: boolean
-          description: Whether player is on active roster
-        depth_chart_order:
-          type: integer
-          nullable: true
-          description: Depth chart position
-        depth_chart_position:
-          type: string
-          nullable: true
-          description: Position on depth chart
-        years_exp:
-          type: integer
-          nullable: true
-          description: Years of experience
-        age:
-          type: integer
-          nullable: true
-          description: Player age
-        birth_date:
-          type: string
-          nullable: true
-          description: Birth date (YYYY-MM-DD)
-        birth_city:
-          type: string
-          nullable: true
-          description: Birth city
-        birth_state:
-          type: string
-          nullable: true
-          description: Birth state
-        birth_country:
-          type: string
-          nullable: true
-          description: Birth country
-        college:
-          type: string
-          nullable: true
-          description: College attended
-        high_school:
-          type: string
-          nullable: true
-          description: High school attended
-        height:
-          type: string
-          nullable: true
-          description: Player height in inches
-        weight:
-          type: string
-          nullable: true
-          description: Player weight in pounds
-        number:
-          type: integer
-          nullable: true
-          description: Jersey number
-        fantasy_positions:
-          type: array
-          items:
-            type: string
-          nullable: true
-          description: Fantasy-relevant positions
-        sport:
-          type: string
-          description: Sport type (nfl)
-        metadata:
-          type: object
-          nullable: true
-          description: Additional player metadata
-          properties:
-            channel_id:
-              type: string
-              description: Channel ID for player updates
-        hashtag:
-          type: string
-          nullable: true
-          description: Player hashtag
-        news_updated:
-          type: string
-          nullable: true
-          description: When news was last updated
-        competitions:
-          type: array
-          items:
-            type: object
-          nullable: true
-          description: Competition data
-        sportradar_id:
-          type: string
-          nullable: true
-          description: SportRadar ID
-        rotoworld_id:
-          type: integer
-          nullable: true
-          description: Rotoworld ID
-        rotowire_id:
-          type: integer
-          nullable: true
-          description: Rotowire ID
-        espn_id:
-          type: integer
-          nullable: true
-          description: ESPN ID
-        yahoo_id:
-          type: integer
-          nullable: true
-          description: Yahoo ID
-        stats_id:
-          type: integer
-          nullable: true
-          description: Stats ID
-        fantasy_data_id:
-          type: integer
-          nullable: true
-          description: FantasyData ID
-        gsis_id:
-          type: string
-          nullable: true
-          description: GSIS ID
-        opta_id:
-          type: string
-          nullable: true
-          description: Opta ID
-        swish_id:
-          type: string
-          nullable: true
-          description: Swish ID
-        pandascore_id:
-          type: string
-          nullable: true
-          description: Pandascore ID
-        oddsjam_id:
-          type: string
-          nullable: true
-          description: Oddsjam ID
-
-    SportState:
-      type: object
-      properties:
-        week:
-          type: integer
-          description: Current week number
-        season_type:
-          type: string
-          description: Season type (regular, post, etc.)
-        season:
-          type: string
-          description: Current season year
-        display_week:
-          type: integer
-          description: Display week number
-        leg:
-          type: integer
-          description: Current leg
-        league_season:
-          type: string
-          description: League season
-        league_create_season:
-          type: string
-          description: Season for creating new leagues
-        previous_season:
-          type: string
-          description: Previous season year
-        season_start_date:
-          type: string
-          description: Season start date
-        season_has_scores:
-          type: boolean
-          description: Whether the season has scores available
+      responses:
+        '200':
+          description: Array of traded picks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  x-graphql-type-name: DraftTradedPick
+                  properties:
+                    season:
+                      type: string
+                    round:
+                      type: integer
+                    owner_id:
+                      type: integer
+                    previous_owner_id:
+                      type: integer
+                    roster_id:
+                      type: integer
+                    draft_id:
+                      type: integer
+                      nullable: true

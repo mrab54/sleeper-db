@@ -1,0 +1,29 @@
+actions:
+  - name: checkActionsHealth
+    definition:
+      kind: synchronous
+      handler: http://actions:8080/actions-health
+      output_type: ActionHealthResponse
+      type: mutation
+      headers:
+        - name: X-Action-Secret
+          value_from_env: ACTION_SECRET
+      timeout: 10
+    permissions:
+      - role: anonymous
+    comment: "Check if the actions service is healthy"
+custom_types:
+  input_objects: []
+  objects:
+    - name: ActionHealthResponse
+      fields:
+        - name: success
+          type: Boolean!
+        - name: message
+          type: String!
+        - name: service
+          type: String!
+        - name: version
+          type: String!
+  scalars: []
+  enums: []

@@ -1,0 +1,10 @@
+type Mutation {
+  checkActionsHealth: ActionHealthResponse
+}
+
+type ActionHealthResponse {
+  success: Boolean!
+  message: String!
+  service: String!
+  version: String!
+}

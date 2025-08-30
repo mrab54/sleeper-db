@@ -791,37 +791,6 @@ LEFT JOIN sleeper.users u ON r.owner_user_id = u.user_id;
 4. **Waiver Priority**: Enforce waiver order/budget constraints
 5. **Draft Order**: Ensure picks follow draft type rules (snake/linear)
 
-### Trigger Examples
-```sql
--- Update roster record counts on player changes
-CREATE OR REPLACE FUNCTION update_roster_counts()
-RETURNS TRIGGER AS $$
-BEGIN
-    UPDATE rosters 
-    SET updated_at = NOW()
-    WHERE roster_id = NEW.roster_id;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER roster_player_changes
-AFTER INSERT OR DELETE ON roster_players
-FOR EACH ROW EXECUTE FUNCTION update_roster_counts();
-
--- Validate lineup position requirements
-CREATE OR REPLACE FUNCTION validate_lineup()
-RETURNS TRIGGER AS $$
-DECLARE
-    position_count INTEGER;
-    required_count INTEGER;
-BEGIN
-    -- Check if lineup meets position requirements
-    -- Implementation would check against league_roster_positions
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-```
-
 ## Migration Strategy
 
 ### Initial Data Load

@@ -59,38 +59,6 @@ services:
           cpus: '1'
           memory: 2G
 
-  sync:
-    build:
-      context: ./sleeper-sync
-      dockerfile: Dockerfile
-    container_name: sleeper-sync
-    restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "8082:8080"
-      - "9090:9090"
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
-      SLEEPER_DATABASE_HOST: postgres
-      SLEEPER_DATABASE_PORT: 5432
-      SLEEPER_DATABASE_DATABASE: ${POSTGRES_DB}
-      SLEEPER_DATABASE_USER: ${POSTGRES_USER}
-      SLEEPER_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
-      SLEEPER_APP_ENVIRONMENT: production
-      SLEEPER_APP_LOG_LEVEL: warn
-    volumes:
-      - ./sleeper-sync/config.yaml:/app/config.yaml:ro
-    networks:
-      - sleeper-net
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-
 networks:
   sleeper-net:
     driver: bridge
